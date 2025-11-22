@@ -1,0 +1,78 @@
+export default {
+  expo: {
+    name: "KCL",
+    slug: "KCL",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/icon.png",
+    scheme: "kcl",
+    userInterfaceStyle: "automatic",
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.talhadev767.KCL",
+      infoPlist: {
+        ITSAppUsesNonExemptEncryption: false
+      }
+    },
+    android: {
+      adaptiveIcon: {
+        backgroundColor: "#E6F4FE",
+        foregroundImage: "./assets/images/android-icon-foreground.png",
+        backgroundImage: "./assets/images/android-icon-background.png",
+        monochromeImage: "./assets/images/android-icon-monochrome.png"
+      },
+      permissions: [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "camera",
+        "photoLibrary"
+      ],
+      package: "com.talhadev767.KCL",
+      softwareKeyboardLayoutMode: "pan"
+    },
+    web: {
+      output: "static",
+      favicon: "./assets/images/favicon.png"
+    },
+    plugins: [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/images/splash-icon.png",
+          imageWidth: 200,
+          resizeMode: "contain",
+          backgroundColor: "#ffffff",
+          dark: {
+            backgroundColor: "#000000"
+          }
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          photosPermission: "Allow KCL to access your photos.",
+          savePhotosPermission: "Allow KCL to save videos to your gallery.",
+          audioPermission: "Allow KCL to access audio files."
+        }
+      ]
+    ],
+    extra: {
+      router: {},
+      BACKEND_URI: "https://kclbackend.vercel.app/api/v1",
+      eas: {
+        projectId: "7508bf8a-8dea-4f71-a1e3-5beb0777d592"
+      }
+    },
+    owner: "minhal786"
+  }
+};
