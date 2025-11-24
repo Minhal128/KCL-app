@@ -21,6 +21,8 @@ import { BACKEND_URI } from "../constants/config";
 import * as Linking from "expo-linking";
 import { useUser } from "../context/UserContext";
 import { authAPI } from "../services/api";
+import ClerkGoogleSignInButton from "../components/auth/ClerkGoogleSignInButton";
+import ClerkAppleSignInButton from "../components/auth/ClerkAppleSignInButton";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -162,25 +164,14 @@ const Login = () => {
 
         <Text style={styles.orSignIn}>Or sign in with</Text>
 
-        <View style={styles.socialContainer}>
-          <TouchableOpacity
-            onPress={() => handleOAuthSignIn("google")}
-            style={styles.socialIconWrapper}
-          >
-            <Image source={google_logo} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleOAuthSignIn("apple")}
-            style={styles.socialIconWrapper}
-          >
-            <Image source={apple_logo} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleOAuthSignIn("facebook")}
-            style={styles.socialIconWrapper}
-          >
-            <Image source={fb_logo} />
-          </TouchableOpacity>
+        <View style={styles.socialButtonsContainer}>
+          <ClerkGoogleSignInButton 
+            style={styles.socialButton}
+          />
+          <ClerkAppleSignInButton 
+            isSignup={false}
+            style={styles.socialButton}
+          />
         </View>
 
         <View style={styles.signUpContainer}>
@@ -290,21 +281,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginVertical: 30,
   },
-  socialContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+  socialButtonsContainer: {
+    gap: 12,
     marginBottom: 40,
-    paddingHorizontal: 10,
   },
-  socialIconWrapper: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#1E3F6D",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#21477C",
+  socialButton: {
+    width: "100%",
   },
   signUpContainer: {
     flexDirection: "row",

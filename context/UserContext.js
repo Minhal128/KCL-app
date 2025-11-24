@@ -66,6 +66,23 @@ export const UserProvider = ({ children }) => {
     try {
       console.log("📡 Fetching user profile...");
       setLoadingUser(true);
+      
+      // Check if we have a valid backend token (not a Clerk session ID)
+      const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
+      const authMethod = await AsyncStorage.getItem("auth_method");
+      
+      // If using Clerk auth (no backend token), skip backend fetch and use cached user
+      if (authMethod === "clerk_google" || authMethod === "clerk_apple") {
+        console.log("📡 Using Clerk authentication, skipping backend profile fetch");
+        const storedUser = await AsyncStorage.getItem(USER_KEY);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+          console.log("✅ Using cached Clerk user data");
+        }
+        setLoadingUser(false);
+        return;
+      }
+      
       const res = await userAPI.getProfile();
       console.log("📡 Profile response:", {
         hasUser: !!res.data?.user,
@@ -90,8 +107,17 @@ export const UserProvider = ({ children }) => {
         "❌ fetchUserProfile failed:",
         error?.response?.data || error.message
       );
-      // keep user null on failure
-      setUser(null);
+      // For Clerk auth, keep the user data even if backend fetch fails
+      const authMethod = await AsyncStorage.getItem("auth_method");
+      if (authMethod === "clerk_google" || authMethod === "clerk_apple") {
+        console.log("📡 Clerk auth detected, keeping cached user data despite backend error");
+        const storedUser = await AsyncStorage.getItem(USER_KEY);
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      } else {
+        setUser(null);
+      }
     } finally {
       setLoadingUser(false);
     }
@@ -129,6 +155,16 @@ export const UserProvider = ({ children }) => {
     []
   );
 
+  // Helper to set auth method (called from Clerk sign-in)
+  const setAuthMethod = useCallback(async (method) => {
+    try {
+      await AsyncStorage.setItem("auth_method", method);
+      console.log("✅ Auth method stored:", method);
+    } catch (err) {
+      console.error("❌ Error storing auth method:", err);
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       // try inform backend
@@ -151,10 +187,11 @@ export const UserProvider = ({ children }) => {
       login,
       logout,
       fetchUserProfile,
+      setAuthMethod,
       loadingUser,
       initialised,
     }),
-    [user, login, logout, fetchUserProfile, loadingUser, initialised]
+    [user, login, logout, fetchUserProfile, setAuthMethod, loadingUser, initialised]
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

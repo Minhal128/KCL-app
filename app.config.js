@@ -12,7 +12,10 @@ export default {
       bundleIdentifier: "com.talhadev767.KCL",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false
-      }
+      },
+      associatedDomains: [
+        "applinks:kcl.clerk.accounts.dev"
+      ]
     },
     android: {
       adaptiveIcon: {
@@ -66,6 +69,7 @@ export default {
         }
       ]
     ],
+    scheme: "kcl",
     extra: {
       router: {},
       BACKEND_URI: "https://kclbackend.vercel.app/api/v1",
