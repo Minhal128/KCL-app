@@ -21,6 +21,7 @@ import { useState } from "react";
 import { authAPI } from "../services/api";
 import ClerkGoogleSignInButton from "../components/auth/ClerkGoogleSignInButton";
 import ClerkAppleSignInButton from "../components/auth/ClerkAppleSignInButton";
+import ClerkFacebookSignInButton from "../components/auth/ClerkFacebookSignInButton";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -117,6 +118,10 @@ const Register = () => {
             style={styles.socialButton}
           />
           <ClerkAppleSignInButton 
+            isSignup={true}
+            style={styles.socialButton}
+          />
+          <ClerkFacebookSignInButton 
             isSignup={true}
             style={styles.socialButton}
           />

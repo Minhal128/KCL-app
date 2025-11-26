@@ -23,6 +23,7 @@ import { useUser } from "../context/UserContext";
 import { authAPI } from "../services/api";
 import ClerkGoogleSignInButton from "../components/auth/ClerkGoogleSignInButton";
 import ClerkAppleSignInButton from "../components/auth/ClerkAppleSignInButton";
+import ClerkFacebookSignInButton from "../components/auth/ClerkFacebookSignInButton";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -172,6 +173,10 @@ const Login = () => {
             isSignup={false}
             style={styles.socialButton}
           />
+          <ClerkFacebookSignInButton 
+            isSignup={false}
+            style={styles.socialButton}
+          />
         </View>
 
         <View style={styles.signUpContainer}>
@@ -282,11 +287,28 @@ const styles = StyleSheet.create({
     marginVertical: 30,
   },
   socialButtonsContainer: {
-    gap: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 30,
     marginBottom: 40,
+    marginTop: 20,
   },
   socialButton: {
-    width: "100%",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#1E3F6D",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  facebookButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#1E3F6D",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signUpContainer: {
     flexDirection: "row",

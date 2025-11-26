@@ -80,16 +80,12 @@ const EditProfile = () => {
       const res = await userAPI.updateProfile(formData);
 
       if (res.data?.success) {
-        const updatedUser = res.data?.user || {
-          ...user,
-          fullName,
-          username,
-          email,
-          phoneNumber: mobile,
-          country: location,
-          avatar: avatarUri || user.avatar,
-        };
-        setUser(updatedUser);
+        // Use the user data returned from backend
+        const updatedUser = res.data?.user;
+        if (updatedUser) {
+          setUser(updatedUser);
+          console.log("✅ Profile updated:", updatedUser);
+        }
 
         Alert.alert("Success", "Profile updated successfully!");
         router.back();

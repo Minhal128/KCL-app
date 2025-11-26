@@ -66,30 +66,24 @@ export const UserProvider = ({ children }) => {
     try {
       console.log("📡 Fetching user profile...");
       setLoadingUser(true);
-      
-      // Check if we have a valid backend token (not a Clerk session ID)
+
+      // Check if we have a valid backend token
       const token = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
-      const authMethod = await AsyncStorage.getItem("auth_method");
       
-      // If using Clerk auth (no backend token), skip backend fetch and use cached user
-      if (authMethod === "clerk_google" || authMethod === "clerk_apple") {
-        console.log("📡 Using Clerk authentication, skipping backend profile fetch");
-        const storedUser = await AsyncStorage.getItem(USER_KEY);
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-          console.log("✅ Using cached Clerk user data");
-        }
+      if (!token) {
+        console.log("❌ No access token found");
+        setUser(null);
         setLoadingUser(false);
         return;
       }
-      
+
       const res = await userAPI.getProfile();
       console.log("📡 Profile response:", {
         hasUser: !!res.data?.user,
         userName: res.data?.user?.name,
         userAvatar: res.data?.user?.avatar,
       });
-      
+
       if (res.data?.user) {
         setUser(res.data.user);
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
@@ -105,11 +99,11 @@ export const UserProvider = ({ children }) => {
     } catch (error) {
       console.log(
         "❌ fetchUserProfile failed:",
-        error?.response?.data || error.message
+        error?.response?.data || error.message,
       );
-      // For Clerk auth, keep the user data even if backend fetch fails
+      // For Clerk auth, keep the cached user data if backend fetch fails temporarily
       const authMethod = await AsyncStorage.getItem("auth_method");
-      if (authMethod === "clerk_google" || authMethod === "clerk_apple") {
+      if (authMethod?.startsWith("clerk_")) {
         console.log("📡 Clerk auth detected, keeping cached user data despite backend error");
         const storedUser = await AsyncStorage.getItem(USER_KEY);
         if (storedUser) {
@@ -152,7 +146,7 @@ export const UserProvider = ({ children }) => {
         console.error("❌ login persistence error:", err);
       }
     },
-    []
+    [],
   );
 
   // Helper to set auth method (called from Clerk sign-in)
@@ -191,7 +185,15 @@ export const UserProvider = ({ children }) => {
       loadingUser,
       initialised,
     }),
-    [user, login, logout, fetchUserProfile, setAuthMethod, loadingUser, initialised]
+    [
+      user,
+      login,
+      logout,
+      fetchUserProfile,
+      setAuthMethod,
+      loadingUser,
+      initialised,
+    ],
   );
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

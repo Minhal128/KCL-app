@@ -72,7 +72,7 @@ export default {
     scheme: "kcl",
     extra: {
       router: {},
-      BACKEND_URI: "https://kclbackend.vercel.app/api/v1",
+      BACKEND_URI: "http://10.48.15.21:3000/api/v1",
       eas: {
         projectId: "7508bf8a-8dea-4f71-a1e3-5beb0777d592"
       }

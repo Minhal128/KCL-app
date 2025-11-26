@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -18,7 +18,7 @@ import config from '../../config';
 import { useUser as useUserContext } from '../../context/UserContext';
 
 /**
- * ClerkAppleSignInButton
+ * ClerkFacebookSignInButton
  *
  * Props:
  *  - isSignup (boolean) : if true, treat this as a signup flow, otherwise login flow
@@ -29,14 +29,14 @@ import { useUser as useUserContext } from '../../context/UserContext';
  *
  * Behavior:
  *  - Forces sign out of existing Clerk session to show account picker
- *  - Starts Clerk server-side OAuth for Apple (strategy: 'oauth_apple')
+ *  - Starts Clerk server-side OAuth for Facebook (strategy: 'oauth_facebook')
  *  - Activates session via setActive
  *  - Extracts Clerk user data, stores helpful fields in AsyncStorage
- *  - Calls backend endpoint `${config.baseUrl}/auth/clerk-apple` for verification/creation
+ *  - Calls backend endpoint `${config.baseUrl}/auth/clerk-facebook` for verification/creation
  *  - On success: stores backend token/user and navigates to 'home' (or calls onSuccess)
  */
 
-const ClerkAppleSignInButton = ({
+const ClerkFacebookSignInButton = ({
   isSignup = false,
   onSuccess,
   onError,
@@ -45,24 +45,31 @@ const ClerkAppleSignInButton = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_apple' });
-  const { user: clerkUser } = useUser();
+  const { startOAuthFlow } = useOAuth({ strategy: 'oauth_facebook' });
+  const { user: clerkUser, isLoaded: clerkUserLoaded } = useUser();
   const { signOut, isSignedIn, getToken } = useAuth();
   const { login, setAuthMethod } = useUserContext();
+  const clerkUserRef = useRef(clerkUser);
+
+  // Update ref whenever clerkUser changes
+  useEffect(() => {
+    clerkUserRef.current = clerkUser;
+    console.log('📝 Updated clerkUserRef:', clerkUser?.id);
+  }, [clerkUser]);
 
   // Helper function to get user from Clerk hook
   const getClerkUserData = useCallback(async () => {
     try {
       // Wait for clerkUser to be available from the hook
       let attempts = 0;
-      while (!clerkUser && attempts < 10) {
+      while (!clerkUserRef.current && attempts < 10) {
         await new Promise(resolve => setTimeout(resolve, 300));
         attempts++;
       }
       
-      if (clerkUser) {
-        console.log('✅ Got user from Clerk hook:', clerkUser.id);
-        return clerkUser;
+      if (clerkUserRef.current) {
+        console.log('✅ Got user from Clerk hook:', clerkUserRef.current.id);
+        return clerkUserRef.current;
       }
       
       console.log('⚠️ Could not get user from Clerk hook after retries');
@@ -71,18 +78,18 @@ const ClerkAppleSignInButton = ({
       console.log('⚠️ Error getting user from Clerk:', error.message);
       return null;
     }
-  }, [clerkUser]);
+  }, []);
 
   const handleAuthError = (err) => {
-    console.error('❌ Clerk Apple Sign-In error:', err);
-    const message = (err && err.message) ? err.message : 'Apple sign-in failed';
+    console.error('❌ Clerk Facebook Sign-In error:', err);
+    const message = (err && err.message) ? err.message : 'Facebook sign-in failed';
     Toast.show({ type: 'error', text1: 'Authentication Failed', text2: message });
     if (onError) onError(err);
   };
 
   const authenticateWithBackend = async (userData) => {
     try {
-      const response = await fetch(`${config.baseUrl}/auth/clerk-apple`, {
+      const response = await fetch(`${config.baseUrl}/auth/clerk-facebook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -97,8 +104,8 @@ const ClerkAppleSignInButton = ({
           lastName: userData.lastName,
           photo: userData.photo,
           phoneNumber: userData.phoneNumber,
-          authMethod: 'clerk_apple',
-          provider: 'apple',
+          authMethod: 'clerk_facebook',
+          provider: 'facebook',
           platform: Platform.OS,
           role: 'customer',
           appType: 'customer',
@@ -111,6 +118,9 @@ const ClerkAppleSignInButton = ({
       try {
         result = raw ? JSON.parse(raw) : {};
       } catch (parseErr) {
+        console.error('❌ Failed to parse backend response');
+        console.error('Status:', response.status);
+        console.error('Raw response (first 500 chars):', raw.substring(0, 500));
         return { success: false, message: 'Server returned unexpected response (non-JSON).', rawResponse: raw, status: response.status };
       }
 
@@ -141,7 +151,7 @@ const ClerkAppleSignInButton = ({
       const store = [
         AsyncStorage.setItem('clerk_user_data', JSON.stringify(userData)),
         AsyncStorage.setItem('clerk_session_id', sessionId),
-        AsyncStorage.setItem('auth_method', 'clerk_apple'),
+        AsyncStorage.setItem('auth_method', 'clerk_facebook'),
         AsyncStorage.setItem('sign_in_time', new Date().toISOString()),
       ];
       if (userData.email) store.push(AsyncStorage.setItem('user_email', userData.email));
@@ -152,7 +162,7 @@ const ClerkAppleSignInButton = ({
     }
   };
 
-  const handleSuccessFlow = async (clerkUserObj, sessionId) => {
+  const handleClerkOnlyFlow = async (clerkUserObj, sessionId) => {
     try {
       const userData = {
         clerkId: clerkUserObj.id,
@@ -171,82 +181,56 @@ const ClerkAppleSignInButton = ({
         signInTime: new Date().toISOString(),
       };
 
+      // Authenticate with backend to get JWT token
+      console.log('🔐 Authenticating with backend...');
+      const backendResult = await authenticateWithBackend(userData);
+
+      if (!backendResult.success) {
+        throw new Error(backendResult.message || 'Backend authentication failed');
+      }
+
+      const backendToken = backendResult.data?.token;
+      const backendUser = backendResult.data?.user;
+
+      if (!backendToken) {
+        throw new Error('No token received from backend');
+      }
+
+      console.log('✅ Backend authentication successful');
+
       // Persist local clerk info
       await persistLocalData(userData, sessionId);
 
-      // Call backend to verify/create user
-      const backendResult = await authenticateWithBackend(userData);
+      // Store auth method
+      await setAuthMethod('clerk_facebook');
 
-      if (backendResult.success) {
-        // On success: store backend tokens and user info
-        const backendData = backendResult.data;
-        if (backendData.token) {
-          await AsyncStorage.setItem('access_token', backendData.token);
-          await AsyncStorage.setItem('backend_auth_token', backendData.token);
-        }
-        if (backendData.user?._id) {
-          await AsyncStorage.setItem('user_id', backendData.user._id);
-          await AsyncStorage.setItem('backend_user_id', backendData.user._id);
-          await AsyncStorage.setItem('user_data', JSON.stringify(backendData.user));
-        }
+      // Use UserContext to login with backend JWT token
+      await login({
+        accessToken: backendToken, // Use backend JWT token
+        user: {
+          _id: backendUser?._id || clerkUserObj.id,
+          name: backendUser?.name || userData.name,
+          email: backendUser?.email || userData.email,
+          avatar: backendUser?.avatar || userData.photo,
+          clerkId: backendUser?.clerkId || userData.clerkId,
+        },
+      });
 
-        // Use UserContext to login
-        await login({
-          accessToken: backendData.token,
-          user: backendData.user,
-        });
+      Toast.show({ type: 'success', text1: 'Welcome!', text2: `Signed in as ${userData.name || userData.email}` });
 
-        Toast.show({ type: 'success', text1: 'Welcome!', text2: `Signed in as ${userData.name || userData.email}` });
+      const finalResult = {
+        success: true,
+        user: userData,
+        clerkUser: clerkUserObj,
+        sessionId,
+        backendData: backendResult.data,
+      };
 
-        const finalResult = {
-          success: true,
-          user: userData,
-          clerkUser: clerkUserObj,
-          sessionId,
-          backendData: backendData,
-        };
-
-        if (onSuccess) {
-          onSuccess(finalResult);
-        } else {
-          // Default navigation target: home
-          router.replace('home');
-        }
+      if (onSuccess) {
+        onSuccess(finalResult);
       } else {
-        // Backend authentication failed - proceed with Clerk auth only
-        console.log('⚠️ Backend authentication failed, proceeding with Clerk auth only');
-        
-        // Store auth method first
-        await setAuthMethod('clerk_apple');
-        
-        // Use UserContext to login with Clerk data
-        await login({
-          accessToken: sessionId, // Use Clerk session ID as token
-          user: {
-            _id: clerkUserObj.id,
-            name: userData.name,
-            email: userData.email,
-            avatar: userData.photo,
-            clerkId: userData.clerkId,
-          },
-        });
-
-        Toast.show({ type: 'success', text1: 'Welcome!', text2: `Signed in as ${userData.name || userData.email}` });
-
-        const finalResult = {
-          success: true,
-          user: userData,
-          clerkUser: clerkUserObj,
-          sessionId,
-          backendData: null,
-        };
-
-        if (onSuccess) {
-          onSuccess(finalResult);
-        } else {
-          // Default navigation target: home
-          router.replace('home');
-        }
+        // Default navigation target: home
+        router.replace('home');
       }
     } catch (err) {
       handleAuthError(err);
@@ -294,7 +278,7 @@ const ClerkAppleSignInButton = ({
         // continue anyway
       }
 
-      // Start Clerk OAuth flow for Apple
+      // Start Clerk OAuth flow for Facebook
       const { createdSessionId, signIn, signUp, setActive } = await startOAuthFlow();
 
       if (!createdSessionId) {
@@ -307,10 +291,10 @@ const ClerkAppleSignInButton = ({
       // Wait for the user hook to update with the new session
       let clerkUserObj = null;
       let attempts = 0;
-      const maxAttempts = 20;
+      const maxAttempts = 30;
 
       while (!clerkUserObj && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
         attempts++;
 
         // First try to get from signIn/signUp (most reliable)
@@ -321,20 +305,27 @@ const ClerkAppleSignInButton = ({
           break;
         }
 
-        // Then try to get user from the hook (it should update after setActive)
-        if (clerkUser) {
-          clerkUserObj = clerkUser;
-          console.log(`✅ Got user from hook on attempt ${attempts}`);
+        // Then try to get user from the ref (updated by useEffect)
+        if (clerkUserRef.current) {
+          clerkUserObj = clerkUserRef.current;
+          console.log(`✅ Got user from ref on attempt ${attempts}`);
           break;
         }
+        
+        console.log(`⏳ Waiting for Clerk user data... attempt ${attempts}/${maxAttempts}`);
       }
 
       if (!clerkUserObj) {
+        console.error('❌ Failed to get user data from Clerk');
+        console.error('signIn:', !!signIn);
+        console.error('signUp:', !!signUp);
+        console.error('clerkUser:', !!clerkUser);
+        console.error('createdSessionId:', createdSessionId);
         throw new Error('No user data received from Clerk after multiple attempts');
       }
 
-      // Process success flow (persist data, call backend, navigate)
-      await handleSuccessFlow(clerkUserObj, createdSessionId);
+      // Process success flow (Clerk-only auth, no backend)
+      await handleClerkOnlyFlow(clerkUserObj, createdSessionId);
     } catch (error) {
       // Handle specific "already signed in" style errors by trying to clear session and asking user to retry
       const errMsg = String(error?.message || error || '');
@@ -365,7 +356,7 @@ const ClerkAppleSignInButton = ({
       {loading ? (
         <ActivityIndicator size="small" color="white" />
       ) : (
-        <FontAwesome name="apple" size={28} color="white" />
+        <FontAwesome name="facebook" size={28} color="white" />
       )}
     </TouchableOpacity>
   );
@@ -389,7 +380,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  appleIcon: {
+  facebookIcon: {
     marginRight: 12,
   },
   buttonText: {
@@ -407,4 +398,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ClerkAppleSignInButton;
+export default ClerkFacebookSignInButton;

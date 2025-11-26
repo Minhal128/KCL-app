@@ -9,9 +9,8 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BACKEND_URI } from "../constants/config";
+import { profileAPI } from "../services/api";
 
 const { height } = Dimensions.get("window");
 
@@ -46,24 +45,17 @@ const VideoQualityModal = ({ visible, onCancel }) => {
         console.warn("Failed to load video quality from storage:", err);
       }
     };
-    loadQuality();
-  }, [selectedQuality]);
+    if (visible) {
+      loadQuality();
+    }
+  }, [visible]);
 
   const handleQualityChange = async (value) => {
     setSelectedQuality(value);
     setLoading(true);
 
     try {
-      const response = await axios.put(
-        `${BACKEND_URI}/profiles/video-quality`,
-        { videoQuality: value },
-        {
-          withCredentials: true,
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await profileAPI.editVideoQuality({ videoQuality: value });
 
       if (response.status === 200) {
         // Store locally too

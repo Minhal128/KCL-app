@@ -33,7 +33,7 @@ const PROFILE_MENU_TOP = [
     icon: "settings-outline",
     label: "Settings",
     key: "settings",
-    url: "/home/profile",
+    url: "/home/settings",
   },
   { icon: "videocam-outline", label: "Video quality", key: "video" },
 ];
