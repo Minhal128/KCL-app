@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   Alert,
   ImageBackground,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +15,7 @@ import subscription_bg from "../../assets/images/auth/subscription_bg.png";
 import { useStripe } from "@stripe/stripe-react-native";
 import axios from "axios";
 import { BACKEND_URI } from "../../constants/config";
+import { useLanguage } from "../../context/LanguageContext";
 
 const PLAN_DETAILS = {
   "Basic Plan": {
@@ -46,6 +48,7 @@ const PLAN_DETAILS = {
 };
 
 const Subscription = () => {
+  const { t } = useLanguage();
   const [selectedPlan, setSelectedPlan] = useState("Standard");
   const currentPlan = PLAN_DETAILS[selectedPlan];
   const [loading, setLoading] = useState(false);
@@ -67,7 +70,7 @@ const Subscription = () => {
 
   // 🔹 Handle payment - temporarily disabled, just skip to home
   const handlePayment = () => {
-    Alert.alert("Success", "Subscription setup skipped for testing!");
+    Alert.alert(t('success'), "Subscription setup skipped for testing!");
     router.push("/home");
   };
 
@@ -102,7 +105,11 @@ const Subscription = () => {
       style={styles.background}
       resizeMode="cover"
     >
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
@@ -112,10 +119,10 @@ const Subscription = () => {
 
         <View style={styles.headerTextContainer}>
           <Text style={styles.title}>
-            Choose the plan that{"\n"}best works for you
+            {t('choosePlan')}
           </Text>
           <Text style={styles.subtitle}>
-            Let&apos;s help you personalize your experience
+            {t('personalizeExperience')}
           </Text>
         </View>
 
@@ -128,7 +135,7 @@ const Subscription = () => {
             <Text style={styles.planName}>{selectedPlan}</Text>
             <Text style={styles.planPrice}>
               {currentPlan.price}
-              <Text style={styles.planMonth}>/Month</Text>
+              <Text style={styles.planMonth}>{t('perMonth')}</Text>
             </Text>
           </View>
 
@@ -160,16 +167,16 @@ const Subscription = () => {
               style={styles.gradientButton}
             >
               <Text style={styles.buttonText}>
-                {loading ? "Processing..." : "Continue with Google Pay"}
+                {loading ? "Processing..." : t('continueToPayment')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
-            <Text style={styles.skipText}>Skip for now</Text>
+            <Text style={styles.skipText}>{t('skip')}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </ImageBackground>
   );
 };
@@ -179,10 +186,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0F294F",
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 30,
     paddingTop: 130,
+    paddingBottom: 40,
   },
   backButton: {
     position: "absolute",

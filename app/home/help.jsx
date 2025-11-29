@@ -121,8 +121,13 @@ const SupportScreen = () => {
         setStats(statsRes.data.data);
       }
     } catch (error) {
-      console.error('Error fetching tickets:', error);
-      Alert.alert('Error', 'Failed to load tickets');
+      // Silently handle 401 errors for Clerk OAuth users
+      if (error?.response?.status === 401) {
+        console.log('📡 Support tickets not available (Clerk auth)');
+      } else {
+        console.error('Error fetching tickets:', error);
+        Alert.alert('Error', 'Failed to load tickets');
+      }
     } finally {
       setLoading(false);
     }

@@ -92,24 +92,18 @@ const OtpVerification = () => {
   const handleResendOtp = async () => {
     try {
       setLoading(true);
-      const res = await axios.post(
-        `${BACKEND_URI}/auth/send-otp`,
-        { email },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      console.log("📧 Resending OTP to:", email);
+      const res = await authAPI.sendOTP(email);
 
       if (res.data?.success) {
-        Alert.alert("Success", "OTP sent successfully!");
+        Alert.alert("Success", "OTP sent successfully! Check your email.");
       } else {
         Alert.alert("Error", res.data?.message || "Failed to send OTP");
       }
     } catch (err) {
-      console.error("OTP Error:", err.message);
-      Alert.alert("Error", "Something went wrong while sending OTP.");
+      console.error("❌ Resend OTP Error:", err?.response?.data || err.message);
+      const errorMessage = err?.response?.data?.message || err.message || "Something went wrong while sending OTP.";
+      Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }

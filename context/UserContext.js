@@ -161,16 +161,42 @@ export const UserProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     try {
+      console.log("🚪 Logging out...");
+      
       // try inform backend
-      await authAPI.signOut();
-    } catch (err) {
-      // ignore error but log it
-      console.error("logout request error:", err?.message || err);
-    } finally {
+      try {
+        await authAPI.signOut();
+      } catch (err) {
+        console.log("⚠️ Backend signout error (ignored):", err?.message);
+      }
+
+      // Clear all stored data
       setUser(null);
-      await AsyncStorage.removeItem(ACCESS_TOKEN_KEY);
-      await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
-      await AsyncStorage.removeItem(USER_KEY);
+      
+      // Clear all auth-related storage
+      const keysToRemove = [
+        ACCESS_TOKEN_KEY,
+        REFRESH_TOKEN_KEY,
+        USER_KEY,
+        "auth_method",
+        "clerk_user_data",
+        "clerk_session_id",
+        "clerk_token",
+        "clerk_user_id",
+        "backend_token",
+        "backend_user_id",
+        "backend_auth_token",
+        "user_id",
+        "user_email",
+        "user_name",
+        "sign_in_time",
+      ];
+      
+      await AsyncStorage.multiRemove(keysToRemove);
+      console.log("✅ All storage cleared");
+      
+    } catch (err) {
+      console.error("❌ Logout error:", err?.message || err);
     }
   }, []);
 

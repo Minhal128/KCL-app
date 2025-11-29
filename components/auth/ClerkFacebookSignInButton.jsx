@@ -89,7 +89,9 @@ const ClerkFacebookSignInButton = ({
 
   const authenticateWithBackend = async (userData) => {
     try {
-      const response = await fetch(`${config.baseUrl}/auth/clerk-facebook`, {
+      const backendUrl = `${config.baseUrl}/auth/clerk-facebook`;
+      console.log('🌐 Calling backend at:', backendUrl);
+      const response = await fetch(backendUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,22 +183,7 @@ const ClerkFacebookSignInButton = ({
         signInTime: new Date().toISOString(),
       };
 
-      // Authenticate with backend to get JWT token
-      console.log('🔐 Authenticating with backend...');
-      const backendResult = await authenticateWithBackend(userData);
-
-      if (!backendResult.success) {
-        throw new Error(backendResult.message || 'Backend authentication failed');
-      }
-
-      const backendToken = backendResult.data?.token;
-      const backendUser = backendResult.data?.user;
-
-      if (!backendToken) {
-        throw new Error('No token received from backend');
-      }
-
-      console.log('✅ Backend authentication successful');
+      console.log('✅ Using Clerk-only authentication (no backend)');
 
       // Persist local clerk info
       await persistLocalData(userData, sessionId);
@@ -204,15 +191,19 @@ const ClerkFacebookSignInButton = ({
       // Store auth method
       await setAuthMethod('clerk_facebook');
 
-      // Use UserContext to login with backend JWT token
+      // Get Clerk JWT token
+      const clerkToken = await getToken();
+      console.log('🔑 Got Clerk token:', clerkToken ? 'Yes' : 'No');
+
+      // Use UserContext to login with Clerk token
       await login({
-        accessToken: backendToken, // Use backend JWT token
+        accessToken: clerkToken || sessionId, // Use Clerk JWT token or session ID
         user: {
-          _id: backendUser?._id || clerkUserObj.id,
-          name: backendUser?.name || userData.name,
-          email: backendUser?.email || userData.email,
-          avatar: backendUser?.avatar || userData.photo,
-          clerkId: backendUser?.clerkId || userData.clerkId,
+          _id: clerkUserObj.id,
+          name: userData.name,
+          email: userData.email,
+          avatar: userData.photo,
+          clerkId: userData.clerkId,
         },
       });
 
@@ -223,7 +214,6 @@ const ClerkFacebookSignInButton = ({
         user: userData,
         clerkUser: clerkUserObj,
         sessionId,
-        backendData: backendResult.data,
       };
 
       if (onSuccess) {

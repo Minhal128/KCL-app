@@ -29,6 +29,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useUser();
 
@@ -136,12 +137,19 @@ const Login = () => {
             style={styles.input}
             placeholder="Enter your password"
             placeholderTextColor="#B4C1D4"
-            secureTextEntry
+            secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
           />
-          <TouchableOpacity style={styles.eyeIcon}>
-            <FontAwesome5 name="eye-slash" size={16} color="#B4C1D4" />
+          <TouchableOpacity 
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <FontAwesome5 
+              name={showPassword ? "eye" : "eye-slash"} 
+              size={16} 
+              color="#B4C1D4" 
+            />
           </TouchableOpacity>
         </View>
 
@@ -224,6 +232,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F294F",
     paddingHorizontal: 30,
     paddingTop: 30,
+    paddingBottom: 40,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
@@ -290,7 +299,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    gap: 30,
+    gap: 20,
     marginBottom: 40,
     marginTop: 20,
   },

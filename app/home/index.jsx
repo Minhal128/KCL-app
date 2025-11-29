@@ -15,11 +15,13 @@ import BottomNavbar from "../../components/BottomNavbar";
 import { router } from "expo-router";
 import avatar from "../../assets/images/avatar/1.png";
 import { useUser } from "../../context/UserContext";
+import { useLanguage } from "../../context/LanguageContext";
 import { useEffect, useState } from "react";
 import { contentAPI, watchlistAPI } from "../../services/api";
 
 const Home = () => {
   const { user, fetchUserProfile, loadingUser } = useUser();
+  const { t } = useLanguage();
   const [featuredContent, setFeaturedContent] = useState([]);
   const [trendingMovies, setTrendingMovies] = useState([]);
   const [topSeries, setTopSeries] = useState([]);
@@ -92,7 +94,7 @@ const Home = () => {
               router.push({ pathname: "/home/all_movies", params: { title } })
             }
           >
-            <Text style={sectionStyles.seeMoreText}>See More</Text>
+            <Text style={sectionStyles.seeMoreText}>{t('seeMore')}</Text>
           </TouchableOpacity>
         </View>
         <FlatList
@@ -143,8 +145,8 @@ const Home = () => {
             style={styles.avatar}
           />
           <View>
-            <Text style={styles.welcomeText}>Welcome</Text>
-            <Text style={styles.nameText}>{user?.name || 'Guest'}</Text>
+            <Text style={styles.welcomeText}>{t('welcome')}</Text>
+            <Text style={styles.nameText}>{user?.name || t('guest')}</Text>
           </View>
         </View>
         <View style={styles.iconContainer}>
@@ -169,9 +171,9 @@ const Home = () => {
           <RefreshControl refreshing={refreshing} onRefresh={() => fetchContent(true)} />
         }
       >
-        {renderSection("Featured Content", featuredContent)}
-        {renderSection("Trending Movies", trendingMovies, true)}
-        {renderSection("Top TV Series", topSeries)}
+        {renderSection(t('featuredContent'), featuredContent)}
+        {renderSection(t('trendingMovies'), trendingMovies, true)}
+        {renderSection(t('topTVSeries'), topSeries)}
       </ScrollView>
 
       <BottomNavbar />

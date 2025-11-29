@@ -174,79 +174,47 @@ const ClerkAppleSignInButton = ({
       // Persist local clerk info
       await persistLocalData(userData, sessionId);
 
-      // Call backend to verify/create user
-      const backendResult = await authenticateWithBackend(userData);
+      console.log('✅ Using Clerk-only authentication (no backend)');
 
-      if (backendResult.success) {
-        // On success: store backend tokens and user info
-        const backendData = backendResult.data;
-        if (backendData.token) {
-          await AsyncStorage.setItem('access_token', backendData.token);
-          await AsyncStorage.setItem('backend_auth_token', backendData.token);
-        }
-        if (backendData.user?._id) {
-          await AsyncStorage.setItem('user_id', backendData.user._id);
-          await AsyncStorage.setItem('backend_user_id', backendData.user._id);
-          await AsyncStorage.setItem('user_data', JSON.stringify(backendData.user));
-        }
+      // Get Clerk JWT token
+      const clerkToken = await getToken();
+      console.log('🔑 Got Clerk token:', clerkToken ? 'Yes' : 'No');
 
-        // Use UserContext to login
-        await login({
-          accessToken: backendData.token,
-          user: backendData.user,
-        });
+      // Store Clerk token
+      if (clerkToken) {
+        await AsyncStorage.setItem('access_token', clerkToken);
+        await AsyncStorage.setItem('clerk_token', clerkToken);
+      }
 
-        Toast.show({ type: 'success', text1: 'Welcome!', text2: `Signed in as ${userData.name || userData.email}` });
+      // Store auth method
+      await setAuthMethod('clerk_apple');
+      
+      // Use UserContext to login with Clerk data
+      await login({
+        accessToken: clerkToken || sessionId,
+        user: {
+          _id: clerkUserObj.id,
+          name: userData.name,
+          email: userData.email,
+          avatar: userData.photo,
+          clerkId: userData.clerkId,
+        },
+      });
 
-        const finalResult = {
-          success: true,
-          user: userData,
-          clerkUser: clerkUserObj,
-          sessionId,
-          backendData: backendData,
-        };
+      Toast.show({ type: 'success', text1: 'Welcome!', text2: `Signed in as ${userData.name || userData.email}` });
 
-        if (onSuccess) {
-          onSuccess(finalResult);
-        } else {
-          // Default navigation target: home
-          router.replace('home');
-        }
+      const finalResult = {
+        success: true,
+        user: userData,
+        clerkUser: clerkUserObj,
+        sessionId,
+      };
+
+      if (onSuccess) {
+        onSuccess(finalResult);
       } else {
-        // Backend authentication failed - proceed with Clerk auth only
-        console.log('⚠️ Backend authentication failed, proceeding with Clerk auth only');
-        
-        // Store auth method first
-        await setAuthMethod('clerk_apple');
-        
-        // Use UserContext to login with Clerk data
-        await login({
-          accessToken: sessionId, // Use Clerk session ID as token
-          user: {
-            _id: clerkUserObj.id,
-            name: userData.name,
-            email: userData.email,
-            avatar: userData.photo,
-            clerkId: userData.clerkId,
-          },
-        });
-
-        Toast.show({ type: 'success', text1: 'Welcome!', text2: `Signed in as ${userData.name || userData.email}` });
-
-        const finalResult = {
-          success: true,
-          user: userData,
-          clerkUser: clerkUserObj,
-          sessionId,
-          backendData: null,
-        };
-
-        if (onSuccess) {
-          onSuccess(finalResult);
-        } else {
-          // Default navigation target: home
-          router.replace('home');
-        }
+        // Default navigation target: home
+        router.replace('home');
       }
     } catch (err) {
       handleAuthError(err);

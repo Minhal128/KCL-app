@@ -15,57 +15,60 @@ import LogoutModal from "../../components/LogoutModal.jsx";
 import { router } from "expo-router";
 import VideoQualityModal from "../../components/VideoQualityModal.jsx";
 import { useUser } from "../../context/UserContext.js";
+import { useAuth } from "@clerk/clerk-expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLanguage } from "../../context/LanguageContext";
 
 const PROFILE_MENU_TOP = [
   {
     icon: "person-outline",
-    label: "Edit Profile",
+    labelKey: "editProfile",
     key: "edit",
     url: "/home/edit",
   },
   {
     icon: "notifications-outline",
-    label: "Notifications",
+    labelKey: "notifications",
     key: "notifications",
     url: "/home/notification",
   },
   {
     icon: "settings-outline",
-    label: "Settings",
+    labelKey: "settings",
     key: "settings",
     url: "/home/settings",
   },
-  { icon: "videocam-outline", label: "Video quality", key: "video" },
+  { icon: "videocam-outline", labelKey: "videoQuality", key: "video" },
 ];
 
 const PROFILE_MENU_BOTTOM = [
   {
     icon: "lock-closed-outline",
-    label: "Privacy",
+    labelKey: "privacy",
     key: "privacy",
     url: "/home/privacy",
   },
   {
     icon: "help-circle-outline",
-    label: "Help center",
+    labelKey: "help",
     key: "help",
     url: "/home/help",
   },
   {
     icon: "information-circle-outline",
-    label: "About us",
+    labelKey: "about",
     key: "about",
     url: "/home/about",
   },
   {
     icon: "language-outline",
-    label: "Languages",
+    labelKey: "language",
     key: "languages",
     url: "/home/language",
   },
 ];
 
-const MenuItem = ({ icon, label, onPress }) => (
+const MenuItem = ({ icon, labelKey, onPress, t }) => (
   <TouchableOpacity style={menuStyles.menuItem} onPress={onPress}>
     <View style={menuStyles.iconLabelContainer}>
       <Ionicons
@@ -74,7 +77,7 @@ const MenuItem = ({ icon, label, onPress }) => (
         color="#B4C1D4"
         style={menuStyles.menuIcon}
       />
-      <Text style={menuStyles.menuLabel}>{label}</Text>
+      <Text style={menuStyles.menuLabel}>{t(labelKey)}</Text>
     </View>
     <Ionicons name="chevron-forward" size={20} color="#B4C1D4" />
   </TouchableOpacity>
@@ -107,13 +110,37 @@ const menuStyles = StyleSheet.create({
 const Profile = () => {
   const [logoutVisible, setLogoutVisible] = useState(false);
   const [videoModalVisible, setVideoModalVisible] = useState(false);
+  const { t } = useLanguage();
 
   const { user, logout } = useUser();
+  const { signOut: clerkSignOut, isSignedIn } = useAuth();
 
   const handleLogout = async () => {
     setLogoutVisible(false);
-    await logout();
-    router.push("login");
+    
+    try {
+      console.log("🚪 Starting logout process...");
+      
+      // Check if using Clerk authentication
+      const authMethod = await AsyncStorage.getItem("auth_method");
+      const isClerkAuth = authMethod?.startsWith("clerk_");
+      
+      if (isClerkAuth && isSignedIn) {
+        console.log("🔐 Signing out of Clerk...");
+        await clerkSignOut();
+        console.log("✅ Clerk sign out complete");
+      }
+      
+      // Clear app storage and context
+      await logout();
+      console.log("✅ Logout complete");
+      
+      router.replace("login");
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+      // Still navigate to login even if there's an error
+      router.replace("login");
+    }
   };
 
   const handleMenuPress = (key, url) => {
@@ -160,7 +187,8 @@ const Profile = () => {
             <MenuItem
               key={item.key}
               icon={item.icon}
-              label={item.label}
+              labelKey={item.labelKey}
+              t={t}
               onPress={() => handleMenuPress(item.key, item.url)}
             />
           ))}
@@ -171,7 +199,8 @@ const Profile = () => {
             <MenuItem
               key={item.key}
               icon={item.icon}
-              label={item.label}
+              labelKey={item.labelKey}
+              t={t}
               onPress={() => handleMenuPress(item.key, item.url)}
             />
           ))}
@@ -187,7 +216,7 @@ const Profile = () => {
             color="#FF3B30"
             style={{ marginRight: 10 }}
           />
-          <Text style={styles.logoutText}>Log out</Text>
+          <Text style={styles.logoutText}>{t('logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
 

@@ -8,50 +8,51 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useLanguage } from "../../context/LanguageContext";
 
 const SETTINGS_OPTIONS = [
   {
     icon: "person-outline",
-    label: "Account Settings",
+    labelKey: "editProfile",
     key: "account",
     url: "/home/edit",
   },
   {
     icon: "notifications-outline",
-    label: "Notification Settings",
+    labelKey: "notifications",
     key: "notifications",
     url: "/home/notification",
   },
   {
     icon: "videocam-outline",
-    label: "Video Quality",
+    labelKey: "videoQuality",
     key: "video",
-    description: "Manage video playback quality",
+    descriptionKey: "videoQuality",
   },
   {
     icon: "language-outline",
-    label: "Language",
+    labelKey: "language",
     key: "language",
     url: "/home/language",
   },
   {
     icon: "lock-closed-outline",
-    label: "Privacy & Security",
+    labelKey: "privacy",
     key: "privacy",
     url: "/home/privacy",
   },
 ];
 
-const SettingItem = ({ icon, label, description, onPress }) => (
+const SettingItem = ({ icon, labelKey, descriptionKey, onPress, t }) => (
   <TouchableOpacity style={styles.settingItem} onPress={onPress}>
     <View style={styles.iconLabelContainer}>
       <View style={styles.iconCircle}>
         <Ionicons name={icon} size={22} color="#08B451" />
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.settingLabel}>{label}</Text>
-        {description && (
-          <Text style={styles.settingDescription}>{description}</Text>
+        <Text style={styles.settingLabel}>{t(labelKey)}</Text>
+        {descriptionKey && (
+          <Text style={styles.settingDescription}>{t(descriptionKey)}</Text>
         )}
       </View>
     </View>
@@ -60,6 +61,8 @@ const SettingItem = ({ icon, label, description, onPress }) => (
 );
 
 const Settings = () => {
+  const { t } = useLanguage();
+
   const handleSettingPress = (key, url) => {
     if (url) {
       router.push(url);
@@ -75,34 +78,37 @@ const Settings = () => {
         >
           <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>{t('settings')}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>General</Text>
+          <Text style={styles.sectionTitle}>{t('settings')}</Text>
           {SETTINGS_OPTIONS.map((item) => (
             <SettingItem
               key={item.key}
               icon={item.icon}
-              label={item.label}
-              description={item.description}
+              labelKey={item.labelKey}
+              descriptionKey={item.descriptionKey}
+              t={t}
               onPress={() => handleSettingPress(item.key, item.url)}
             />
           ))}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <Text style={styles.sectionTitle}>{t('support')}</Text>
           <SettingItem
             icon="help-circle-outline"
-            label="Help Center"
+            labelKey="help"
+            t={t}
             onPress={() => router.push("/home/help")}
           />
           <SettingItem
             icon="information-circle-outline"
-            label="About Us"
+            labelKey="about"
+            t={t}
             onPress={() => router.push("/home/about")}
           />
         </View>

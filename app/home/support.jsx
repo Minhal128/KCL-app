@@ -121,8 +121,13 @@ const SupportScreen = () => {
         setStats(statsRes.data.data);
       }
     } catch (error) {
-      console.error('Error fetching tickets:', error);
-      Alert.alert('Error', 'Failed to load tickets');
+      // Silently handle 401 errors for Clerk OAuth users
+      if (error?.response?.status === 401) {
+        console.log('📡 Support tickets not available (Clerk auth)');
+      } else {
+        console.error('Error fetching tickets:', error);
+        Alert.alert('Error', 'Failed to load tickets');
+      }
     } finally {
       setLoading(false);
     }
@@ -141,8 +146,8 @@ const SupportScreen = () => {
     try {
       setCreating(true);
       const response = await supportAPI.createTicket({
-        subject,
-        description,
+        subject: subject.trim(),
+        description: description.trim(),
         category,
         priority,
       });
@@ -155,10 +160,13 @@ const SupportScreen = () => {
         setCategory('other');
         setPriority('medium');
         fetchTickets();
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to create ticket');
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      Alert.alert('Error', 'Failed to create ticket');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to create ticket';
+      Alert.alert('Error', errorMessage);
     } finally {
       setCreating(false);
     }

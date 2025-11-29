@@ -75,7 +75,12 @@ const Notification = () => {
                 setUnreadCount(response.data.data.unreadCount);
             }
         } catch (error) {
-            console.error('Error fetching notifications:', error);
+            // Silently handle 401 errors for Clerk OAuth users
+            if (error?.response?.status === 401) {
+                console.log('📡 Notifications not available (Clerk auth)');
+            } else {
+                console.error('Error fetching notifications:', error);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);

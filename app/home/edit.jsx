@@ -16,9 +16,12 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { userAPI } from "../../services/api";
 import { useUser } from "../../context/UserContext";
+import { useLanguage } from "../../context/LanguageContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const EditProfile = () => {
   const { user, setUser } = useUser();
+  const { t } = useLanguage();
 
   const [fullName, setFullName] = useState(user?.name || "");
   const [username, setUsername] = useState(user?.username || "");
@@ -55,42 +58,72 @@ const EditProfile = () => {
     try {
       setLoading(true);
 
-      const formData = new FormData();
-      formData.append("fullName", fullName);
-      formData.append("username", username);
-      formData.append("email", email);
-      formData.append("phoneNumber", mobile);
-      formData.append("country", location);
+      // Check if using Clerk authentication
+      const authMethod = await AsyncStorage.getItem("auth_method");
+      const isClerkAuth = authMethod?.startsWith("clerk_");
 
-      if (avatarUri) {
-        const fileName = avatarUri.split("/").pop();
-        const type = fileName.endsWith(".png")
-          ? "image/png"
-          : fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")
-          ? "image/jpeg"
-          : "image/*";
+      if (isClerkAuth) {
+        // For Clerk auth, update locally only
+        console.log("✅ Using Clerk auth, updating profile locally");
+        
+        const updatedUser = {
+          ...user,
+          name: fullName,
+          username: username,
+          email: email,
+          phone: mobile,
+          country: location,
+          avatar: avatarUri || user?.avatar,
+        };
 
-        formData.append("avatar", {
-          uri: avatarUri,
-          name: fileName,
-          type,
-        });
-      }
-
-      const res = await userAPI.updateProfile(formData);
-
-      if (res.data?.success) {
-        // Use the user data returned from backend
-        const updatedUser = res.data?.user;
-        if (updatedUser) {
-          setUser(updatedUser);
-          console.log("✅ Profile updated:", updatedUser);
-        }
-
+        setUser(updatedUser);
+        await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+        
         Alert.alert("Success", "Profile updated successfully!");
         router.back();
       } else {
-        Alert.alert("Error", res.data?.message || "Failed to update profile");
+        // For email/password auth, update via backend
+        const formData = new FormData();
+        formData.append("fullName", fullName);
+        formData.append("username", username);
+        formData.append("email", email);
+        formData.append("phoneNumber", mobile);
+        formData.append("country", location);
+
+        if (avatarUri && avatarUri !== user?.avatar) {
+          const fileName = avatarUri.split("/").pop();
+          const type = fileName.endsWith(".png")
+            ? "image/png"
+            : fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")
+            ? "image/jpeg"
+            : "image/*";
+
+          formData.append("avatar", {
+            uri: avatarUri,
+            name: fileName,
+            type,
+          });
+        }
+
+        const res = await userAPI.updateProfile(formData);
+
+        if (res.data?.success) {
+          // Use the user data returned from backend and preserve existing user data
+          const updatedUser = {
+            ...user,
+            ...res.data?.user,
+            avatar: res.data?.user?.avatar || avatarUri || user?.avatar,
+          };
+          
+          setUser(updatedUser);
+          await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+          console.log("✅ Profile updated:", updatedUser);
+
+          Alert.alert(t('success'), t('profileUpdated'));
+          router.back();
+        } else {
+          Alert.alert("Error", res.data?.message || "Failed to update profile");
+        }
       }
     } catch (error) {
       console.error("Update Error:", error);
@@ -109,7 +142,7 @@ const EditProfile = () => {
         >
           <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <Text style={styles.headerTitle}>{t('editProfile')}</Text>
         <TouchableOpacity style={styles.helpButton}>
           <Ionicons name="help-circle-outline" size={24} color="#08B451" />
         </TouchableOpacity>
@@ -135,21 +168,21 @@ const EditProfile = () => {
 
         {/* --- Form Fields --- */}
         {[
-          { label: "Full Name", value: fullName, setter: setFullName },
-          { label: "Username", value: username, setter: setUsername },
+          { label: t('fullName'), value: fullName, setter: setFullName },
+          { label: t('username'), value: username, setter: setUsername },
           {
-            label: "Email Address",
+            label: t('emailAddress'),
             value: email,
             setter: setEmail,
             type: "email-address",
           },
           {
-            label: "Mobile Number",
+            label: t('mobileNumber'),
             value: mobile,
             setter: setMobile,
             type: "phone-pad",
           },
-          { label: "Location", value: location, setter: setLocation },
+          { label: t('location'), value: location, setter: setLocation },
         ].map((field, index) => (
           <View key={index}>
             <Text style={styles.label}>{field.label}</Text>
@@ -180,7 +213,7 @@ const EditProfile = () => {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.buttonText}>Save</Text>
+              <Text style={styles.buttonText}>{t('save')}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>

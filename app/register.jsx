@@ -22,6 +22,8 @@ import { authAPI } from "../services/api";
 import ClerkGoogleSignInButton from "../components/auth/ClerkGoogleSignInButton";
 import ClerkAppleSignInButton from "../components/auth/ClerkAppleSignInButton";
 import ClerkFacebookSignInButton from "../components/auth/ClerkFacebookSignInButton";
+import { BACKEND_URI } from "../constants/config";
+import axios from "axios";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -33,19 +35,53 @@ const Register = () => {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert("Error", "Please enter a valid email address.");
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await authAPI.sendOTP(email);
+      console.log("📧 Sending OTP to:", email.trim());
+      console.log("🌐 Backend URI:", BACKEND_URI);
+      
+      // Test connection first
+      try {
+        console.log("🧪 Testing backend connection...");
+        const testRes = await axios.get(`${BACKEND_URI}/auth/test`, {
+          timeout: 5000
+        });
+        console.log("✅ Backend test successful:", testRes.data);
+      } catch (testErr) {
+        console.error("❌ Backend test failed:", testErr.message);
+        throw new Error("Cannot connect to server. Please check your network.");
+      }
+      
+      const res = await authAPI.sendOTP(email.trim());
 
+      console.log("✅ OTP Response:", res.data);
       if (res.data?.success) {
-        Alert.alert("Success", "OTP sent successfully!");
-        router.push(`/onboarding?email=${encodeURIComponent(email)}`);
+        Alert.alert("Success", "OTP sent successfully! Check your email.");
+        router.push(`/onboarding?email=${encodeURIComponent(email.trim())}`);
       } else {
         Alert.alert("Error", res.data?.message || "Failed to send OTP");
       }
     } catch (err) {
-      console.error("OTP Error:", err?.response?.data || err.message);
-      const errorMessage = err?.response?.data?.message || err.message || "Something went wrong while sending OTP.";
+      console.error("❌ OTP Error Full:", err);
+      console.error("❌ OTP Error Response:", err?.response);
+      console.error("❌ OTP Error Data:", err?.response?.data);
+      console.error("❌ OTP Error Message:", err.message);
+      
+      let errorMessage = "Network error. Please check your connection.";
+      
+      if (err?.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
@@ -129,7 +165,7 @@ const Register = () => {
 
         <View style={styles.signUpContainer}>
           <Text style={styles.signUpText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => router.push("register")}>
+          <TouchableOpacity onPress={() => router.push("login")}>
             <Text style={styles.signUpLink}>Sign in</Text>
           </TouchableOpacity>
         </View>
@@ -172,6 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F294F",
     paddingHorizontal: 30,
     paddingTop: 30,
+    paddingBottom: 40,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -20,
@@ -235,11 +272,20 @@ const styles = StyleSheet.create({
     marginVertical: 30,
   },
   socialButtonsContainer: {
-    gap: 12,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 20,
     marginBottom: 40,
+    marginTop: 20,
   },
   socialButton: {
-    width: "100%",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#1E3F6D",
+    justifyContent: "center",
+    alignItems: "center",
   },
   signUpContainer: {
     flexDirection: "row",

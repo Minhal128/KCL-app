@@ -55,10 +55,13 @@ const VideoQualityModal = ({ visible, onCancel }) => {
     setLoading(true);
 
     try {
-      const response = await profileAPI.editVideoQuality({ videoQuality: value });
+      // Check if using Clerk authentication
+      const authMethod = await AsyncStorage.getItem("auth_method");
+      const isClerkAuth = authMethod?.startsWith("clerk_");
 
-      if (response.status === 200) {
-        // Store locally too
+      if (isClerkAuth) {
+        // For Clerk auth, store locally only
+        console.log("✅ Using Clerk auth, storing video quality locally");
         await AsyncStorage.setItem("userVideoQuality", value);
         Alert.alert(
           "✅ Updated",
@@ -66,7 +69,20 @@ const VideoQualityModal = ({ visible, onCancel }) => {
         );
         onCancel();
       } else {
-        Alert.alert("⚠️ Error", "Could not update video quality");
+        // For email/password auth, update via backend
+        const response = await profileAPI.editVideoQuality({ videoQuality: value });
+
+        if (response.status === 200) {
+          // Store locally too
+          await AsyncStorage.setItem("userVideoQuality", value);
+          Alert.alert(
+            "✅ Updated",
+            `Video quality set to ${value.toUpperCase()}`
+          );
+          onCancel();
+        } else {
+          Alert.alert("⚠️ Error", "Could not update video quality");
+        }
       }
     } catch (error) {
       console.error(

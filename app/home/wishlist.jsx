@@ -204,17 +204,16 @@ const Explore = () => {
                 setFilteredWatchlist(response.data.wishlist);
             }
         } catch (error) {
-            console.error('Error fetching watchlist:', error);
-            console.error('Error details:', {
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                url: error.config?.url,
-                baseURL: error.config?.baseURL,
-                fullURL: error.config?.baseURL + error.config?.url,
-                message: error.message,
-                data: error.response?.data
-            });
-            Alert.alert('Error', `Failed to load watchlist: ${error.response?.status || error.message}`);
+            // Silently handle 401 errors for Clerk OAuth users
+            if (error?.response?.status === 401) {
+                console.log('📡 Watchlist not available (Clerk auth)');
+                // Set empty watchlist for Clerk users
+                setWatchlist([]);
+                setFilteredWatchlist([]);
+            } else {
+                console.error('Error fetching watchlist:', error);
+                Alert.alert('Error', `Failed to load watchlist: ${error.response?.status || error.message}`);
+            }
         } finally {
             setLoading(false);
             setRefreshing(false);

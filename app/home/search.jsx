@@ -1,20 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../context/LanguageContext';
 import movie_1 from '../../assets/images/movies/1.png';
 import movie_2 from '../../assets/images/movies/2.png';
 
 const CATEGORY_TABS = ['All', 'Actions', 'Adventures', 'TV series', 'Comedy', 'Drama', 'Sci-Fi'];
 
-const RECENT_SEARCHES = [
-    'Matrix',
-    'Born to win',
-    'Left to shine',
-    'Lonely',
-    'In love with my neighbor',
-    'Judge',
-];
+const RECENT_SEARCHES_KEY = 'recent_searches';
 
 const TOP_SEARCHED_DATA = [
     { id: 't1', title: 'Inside Out 2', image: movie_1 },
@@ -23,14 +18,20 @@ const TOP_SEARCHED_DATA = [
     { id: 't4', title: 'Black Panther', image: movie_2 },
 ];
 
-const SearchBar = () => (
+const SearchBar = ({ value, onChangeText, onSubmit, placeholder }) => (
     <View style={searchBarStyles.searchBarContainer}>
         <TextInput
             style={searchBarStyles.searchInput}
-            placeholder="Search movies, series"
+            placeholder={placeholder}
             placeholderTextColor="#B4C1D4"
+            value={value}
+            onChangeText={onChangeText}
+            onSubmitEditing={onSubmit}
+            returnKeyType="search"
         />
-        <Ionicons name="search" size={20} color="#B4C1D4" />
+        <TouchableOpacity onPress={onSubmit}>
+            <Ionicons name="search" size={20} color="#B4C1D4" />
+        </TouchableOpacity>
     </View>
 );
 
@@ -109,15 +110,23 @@ const categoryStyles = StyleSheet.create({
     },
 });
 
-const RecentSearches = ({ data }) => (
+const RecentSearches = ({ data, onSearchSelect }) => (
     <View style={recentStyles.recentContainer}>
         <Text style={recentStyles.recentTitle}>Recent Search</Text>
-        {data.map((item, index) => (
-            <TouchableOpacity key={index} style={recentStyles.recentItem}>
-                <Text style={recentStyles.recentItemText}>{item}</Text>
-                <Ionicons name="arrow-up-circle-outline" size={18} color="#B4C1D4" />
-            </TouchableOpacity>
-        ))}
+        {data.length === 0 ? (
+            <Text style={recentStyles.emptyText}>No recent searches</Text>
+        ) : (
+            data.map((item, index) => (
+                <TouchableOpacity 
+                    key={index} 
+                    style={recentStyles.recentItem}
+                    onPress={() => onSearchSelect(item)}
+                >
+                    <Text style={recentStyles.recentItemText}>{item}</Text>
+                    <Ionicons name="arrow-up-circle-outline" size={18} color="#B4C1D4" />
+                </TouchableOpacity>
+            ))
+        )}
     </View>
 );
 
@@ -146,6 +155,12 @@ const recentStyles = StyleSheet.create({
     recentItemText: {
         fontSize: 16,
         color: 'white',
+    },
+    emptyText: {
+        fontSize: 14,
+        color: '#B4C1D4',
+        textAlign: 'center',
+        paddingVertical: 10,
     },
 });
 
@@ -211,7 +226,63 @@ const topStyles = StyleSheet.create({
 });
 
 const Search = () => {
+    const { t } = useLanguage();
     const [selectedTab, setSelectedTab] = useState('All');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [recentSearches, setRecentSearches] = useState([]);
+
+    useEffect(() => {
+        loadRecentSearches();
+    }, []);
+
+    const loadRecentSearches = async () => {
+        try {
+            const searches = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+            if (searches) {
+                setRecentSearches(JSON.parse(searches));
+            }
+        } catch (error) {
+            console.error('Error loading recent searches:', error);
+        }
+    };
+
+    const saveRecentSearch = async (query) => {
+        if (!query.trim()) return;
+        
+        try {
+            const trimmedQuery = query.trim();
+            let searches = [...recentSearches];
+            
+            // Remove if already exists
+            searches = searches.filter(s => s.toLowerCase() !== trimmedQuery.toLowerCase());
+            
+            // Add to beginning
+            searches.unshift(trimmedQuery);
+            
+            // Keep only last 10 searches
+            searches = searches.slice(0, 10);
+            
+            await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches));
+            setRecentSearches(searches);
+        } catch (error) {
+            console.error('Error saving recent search:', error);
+        }
+    };
+
+    const handleSearch = () => {
+        if (searchQuery.trim()) {
+            saveRecentSearch(searchQuery);
+            // Perform actual search here
+            console.log('Searching for:', searchQuery);
+        }
+    };
+
+    const handleRecentSearchSelect = (query) => {
+        setSearchQuery(query);
+        saveRecentSearch(query);
+        // Perform actual search here
+        console.log('Searching for:', query);
+    };
 
     return (
         <View style={styles.container}>
@@ -223,9 +294,17 @@ const Search = () => {
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                <SearchBar />
+                <SearchBar 
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onSubmit={handleSearch}
+                    placeholder={t('searchMovies')}
+                />
                 <CategoryTabs selectedTab={selectedTab} setSelectedTab={setSelectedTab} />
-                <RecentSearches data={RECENT_SEARCHES} />
+                <RecentSearches 
+                    data={recentSearches} 
+                    onSearchSelect={handleRecentSearchSelect}
+                />
                 <TopSearched data={TOP_SEARCHED_DATA} />
             </ScrollView>
         </View>

@@ -7,6 +7,7 @@ import "react-native-reanimated";
 // Prop debug helper - logs when components receive string "true"/"false" for boolean-like props
 import "../utils/propDebug";
 import { UserProvider, useUser } from "../context/UserContext";
+import { LanguageProvider } from "../context/LanguageContext";
 import { useEffect } from "react";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { ClerkProvider } from "@clerk/clerk-expo";
@@ -56,17 +57,19 @@ export default function RootLayout() {
     >
       <ThemeProvider value={DarkTheme}>
         <StripeProvider publishableKey="pk_test_51QhxcRAtSFeuCmPAJW6zwkpg6sFPGFpU4i5W1RAijd7bUcKYoWAalsIx3xNn4WToyDxEYKmHNzSOsHb14PXH8k1U002Cj7ZQg3">
-          <UserProvider>
-            <FetchProfileOnMount />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                animation: "slide_from_right",
-                animationTypeForReplace: "push",
-                contentStyle: { backgroundColor: "rgb(1, 1, 1)" },
-              }}
-            />
-          </UserProvider>
+          <LanguageProvider>
+            <UserProvider>
+              <FetchProfileOnMount />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                  animationTypeForReplace: "push",
+                  contentStyle: { backgroundColor: "rgb(1, 1, 1)" },
+                }}
+              />
+            </UserProvider>
+          </LanguageProvider>
         </StripeProvider>
         <StatusBar style="auto" />
       </ThemeProvider>

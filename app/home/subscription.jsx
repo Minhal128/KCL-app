@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator, Modal } from 'react-native';
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import subscription_bg from '../../assets/images/auth/subscription_bg.png';
 import { paymentAPI } from '../../services/api';
 import { useStripe } from '@stripe/stripe-react-native';
+import { useLanguage } from '../../context/LanguageContext';
 
 const PLAN_DETAILS = {
     basic: {
@@ -44,6 +45,7 @@ const PLAN_DETAILS = {
 };
 
 const Subscription = () => {
+    const { t } = useLanguage();
     const [selectedPlan, setSelectedPlan] = useState('standard');
     const [processing, setProcessing] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -79,7 +81,8 @@ const Subscription = () => {
                 });
 
                 if (initError) {
-                    Alert.alert('Error', initError.message);
+                    console.error('Init error:', initError);
+                    Alert.alert('Error', initError.message || 'Failed to initialize payment');
                     setProcessing(false);
                     return;
                 }
@@ -88,7 +91,10 @@ const Subscription = () => {
                 const { error: presentError } = await presentPaymentSheet();
 
                 if (presentError) {
-                    Alert.alert('Payment Cancelled', presentError.message);
+                    console.error('Present error:', presentError);
+                    if (presentError.code !== 'Canceled') {
+                        Alert.alert('Payment Error', presentError.message || 'Payment failed');
+                    }
                     setProcessing(false);
                     return;
                 }
@@ -104,10 +110,13 @@ const Subscription = () => {
                         },
                     ]
                 );
+            } else {
+                Alert.alert('Error', response.data.message || 'Failed to create payment intent');
             }
         } catch (error) {
             console.error('Payment error:', error);
-            Alert.alert('Error', error.response?.data?.message || 'Failed to process payment');
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to process payment';
+            Alert.alert('Payment Error', errorMessage);
         } finally {
             setProcessing(false);
         }
@@ -141,14 +150,18 @@ const Subscription = () => {
 
     return (
         <ImageBackground source={subscription_bg} style={styles.background} resizeMode="cover">
-            <View style={styles.container}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <Ionicons name="chevron-back" size={24} color="white" />
-                </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Ionicons name="chevron-back" size={24} color="white" />
+            </TouchableOpacity>
 
+            <ScrollView 
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
                 <View style={styles.headerTextContainer}>
-                    <Text style={styles.title}>Choose the plan that{'\n'}best works for you</Text>
-                    <Text style={styles.subtitle}>Let's help you personalize your experience</Text>
+                    <Text style={styles.title}>{t('choosePlan')}</Text>
+                    <Text style={styles.subtitle}>{t('personalizeExperience')}</Text>
                 </View>
 
                 <View style={styles.planTabsContainer}>
@@ -185,12 +198,12 @@ const Subscription = () => {
                             {processing ? (
                                 <ActivityIndicator color="white" />
                             ) : (
-                                <Text style={styles.buttonText}>Continue to Payment</Text>
+                                <Text style={styles.buttonText}>{t('continueToPayment')}</Text>
                             )}
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
-            </View>
+            </ScrollView>
 
             {/* Payment Method Modal */}
             <Modal
@@ -241,10 +254,13 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#0F294F',
     },
-    container: {
+    scrollView: {
         flex: 1,
+    },
+    scrollContent: {
         paddingHorizontal: 30,
         paddingTop: 130,
+        paddingBottom: 40,
     },
     backButton: {
         position: 'absolute',

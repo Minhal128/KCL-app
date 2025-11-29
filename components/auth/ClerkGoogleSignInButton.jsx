@@ -88,44 +88,43 @@ const ClerkGoogleSignInButton = ({
         // Set the active session
         await setActive({ session: createdSessionId });
 
-        // Wait for the user hook to update with the new session
-        let user = null;
-        let attempts = 0;
-        const maxAttempts = 20;
-
-        while (!user && attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 300));
-          attempts++;
-
-          // First try to get from signIn/signUp (most reliable)
-          const authResult = signIn || signUp;
-          if (authResult?.user) {
-            user = authResult.user;
-            console.log(`✅ Got user from auth result on attempt ${attempts}`);
-            break;
-          }
-
-          // Then try to get user from the hook (it should update after setActive)
-          if (clerkUser) {
-            user = clerkUser;
-            console.log(`✅ Got user from hook on attempt ${attempts}`);
-            break;
-          }
-        }
+        // Get user from signIn/signUp result (most reliable)
+        const authResult = signIn || signUp;
+        let user = authResult?.user;
 
         console.log("🔍 Auth result:", {
           hasSignIn: !!signIn,
           hasSignUp: !!signUp,
+          hasAuthResult: !!authResult,
           hasUser: !!user,
           hasClerkUser: !!clerkUser,
-          attempts: attempts,
         });
+
+        // If we don't have user from auth result, wait for hook to update
+        if (!user) {
+          console.log("⏳ Waiting for user data from hook...");
+          let attempts = 0;
+          const maxAttempts = 15;
+
+          while (!user && attempts < maxAttempts) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            attempts++;
+
+            if (clerkUser) {
+              user = clerkUser;
+              console.log(`✅ Got user from hook on attempt ${attempts}`);
+              break;
+            }
+          }
+        } else {
+          console.log("✅ Got user from auth result immediately");
+        }
 
         if (user) {
           await handleAuthSuccess(user, createdSessionId);
         } else {
           throw new Error(
-            "No user data received from Clerk after multiple attempts",
+            "No user data received from Clerk. Please try again.",
           );
         }
       } else {
@@ -275,61 +274,56 @@ const ClerkGoogleSignInButton = ({
 
       await Promise.all(storagePromises);
 
-      // Send to backend for verification and account creation/login
-      const backendResult = await authenticateWithBackend(userData);
+      console.log('✅ Using Clerk-only authentication (no backend)');
 
-      if (backendResult.success) {
-        // Store backend tokens
-        if (backendResult.data?.token) {
-          await AsyncStorage.setItem('backend_token', backendResult.data.token);
-          await AsyncStorage.setItem('access_token', backendResult.data.token);
-        }
-        if (backendResult.data?.user?._id) {
-          await AsyncStorage.setItem(
-            'backend_user_id',
-            backendResult.data.user._id,
-          );
-          await AsyncStorage.setItem('user_id', backendResult.data.user._id);
-        }
+      // Get Clerk JWT token
+      const clerkToken = await getToken();
+      console.log('🔑 Got Clerk token:', clerkToken ? 'Yes' : 'No');
 
-        // Use UserContext to login
-        await login({
-          accessToken: backendResult.data.token,
-          user: backendResult.data.user,
-        });
-
-        Toast.show({
-          type: 'success',
-          text1: 'Welcome!',
-          text2: `Signed in as ${userData.name || userData.email}`,
-          visibilityTime: 3000,
-        });
-
-        const finalResult = {
-          success: true,
-          user: userData,
-          clerkUser: clerkUser,
-          sessionId: sessionId,
-          backendData: backendResult.data,
-          tokens: {
-            clerkSessionId: sessionId,
-            backendToken: backendResult.data?.token,
-          },
-        };
-
-        if (onSuccess) {
-          onSuccess(finalResult);
-        } else {
-          // Default navigation to home
-          router.replace('home');
-        }
-        // Stop further execution so we don't fallthrough to the signup/register fallback
-        return;
-      } else {
-        // Backend authentication failed - throw error
-        console.error('❌ Backend authentication failed:', backendResult.message);
-        throw new Error(backendResult.message || 'Backend authentication failed');
+      // Store Clerk token as access token
+      if (clerkToken) {
+        await AsyncStorage.setItem('access_token', clerkToken);
+        await AsyncStorage.setItem('clerk_token', clerkToken);
       }
+
+      // Use UserContext to login with Clerk data
+      await login({
+        accessToken: clerkToken || sessionId,
+        user: {
+          _id: userData.clerkId,
+          name: userData.name,
+          email: userData.email,
+          avatar: userData.photo,
+          clerkId: userData.clerkId,
+        },
+      });
+
+      Toast.show({
+        type: 'success',
+        text1: 'Welcome!',
+        text2: `Signed in as ${userData.name || userData.email}`,
+        visibilityTime: 3000,
+      });
+
+      const finalResult = {
+        success: true,
+        user: userData,
+        clerkUser: clerkUser,
+        sessionId: sessionId,
+        tokens: {
+          clerkSessionId: sessionId,
+          clerkToken: clerkToken,
+        },
+      };
+
+      if (onSuccess) {
+        onSuccess(finalResult);
+      } else {
+        // Default navigation to home
+        router.replace('home');
+      }
+      // Stop further execution
+      return;
     } catch (error) {
       console.error("❌ Auth success handling error:", error);
       handleAuthError(error);
@@ -393,7 +387,9 @@ const ClerkGoogleSignInButton = ({
         clerkId: clerkUserData.clerkId,
       });
 
-      const response = await fetch(`${config.baseUrl}/auth/clerk-google`, {
+      const backendUrl = `${config.baseUrl}/auth/clerk-google`;
+      console.log('🌐 Calling backend at:', backendUrl);
+      const response = await fetch(backendUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

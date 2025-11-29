@@ -13,6 +13,7 @@ const config = {
   // OAuth endpoints
   clerkGoogleEndpoint: `${BACKEND_URI}/auth/clerk-google`,
   clerkAppleEndpoint: `${BACKEND_URI}/auth/clerk-apple`,
+  clerkFacebookEndpoint: `${BACKEND_URI}/auth/clerk-facebook`,
   
   // App configuration
   appName: "KCL",
@@ -20,5 +21,10 @@ const config = {
   appType: "rider",
   userType: "customer",
 };
+
+// Log configuration on load
+console.log("🔧 Config loaded:");
+console.log("  - BACKEND_URI:", BACKEND_URI);
+console.log("  - baseUrl:", config.baseUrl);
 
 export default config;

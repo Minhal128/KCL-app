@@ -13,6 +13,7 @@ import { router } from "expo-router";
 import axios from "axios";
 import { BACKEND_URI } from "../../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLanguage } from "../../context/LanguageContext";
 
 const LANGUAGES = [
   { label: "English", value: "en" },
@@ -35,47 +36,49 @@ const LanguageItem = ({ label, value, isSelected, onPress }) => (
 );
 
 const Language = () => {
-  const [selectedLanguage, setSelectedLanguage] = useState("en");
+  const { language: currentLanguage, changeLanguage, t } = useLanguage();
+  const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadLanguage = async () => {
-      try {
-        const savedLanguage = await AsyncStorage.getItem("userLanguage");
-        if (savedLanguage) setSelectedLanguage(savedLanguage);
-      } catch (err) {
-        console.warn("Failed to load language from storage:", err);
-      }
-    };
-    loadLanguage();
-  }, []);
+    setSelectedLanguage(currentLanguage);
+  }, [currentLanguage]);
 
   const handleLanguageSelect = async (value) => {
     setSelectedLanguage(value);
     setLoading(true);
 
     try {
-      const response = await axios.put(
-        `${BACKEND_URI}/user/language`,
-        { language: value }, // ✅ use value directly
-        {
-          withCredentials: true,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const token = await AsyncStorage.getItem("access_token");
+      const authMethod = await AsyncStorage.getItem("auth_method");
+      const isClerkAuth = authMethod?.startsWith("clerk_");
 
-      if (response.status === 200) {
-        await AsyncStorage.setItem("userLanguage", value);
-        Alert.alert("✅ Updated", `Language set to ${value.toUpperCase()}`);
-      } else {
-        Alert.alert("⚠️ Error", "Could not update language.");
+      // Update language in context (this will update the entire app)
+      await changeLanguage(value);
+
+      if (!isClerkAuth) {
+        // For email/password auth, also update backend
+        try {
+          await axios.put(
+            `${BACKEND_URI}/user/language`,
+            { language: value },
+            {
+              withCredentials: true,
+              headers: { 
+                "Content-Type": "application/json",
+                "Authorization": token ? `Bearer ${token}` : undefined,
+              },
+            }
+          );
+        } catch (backendError) {
+          console.warn("Backend language update failed (non-critical):", backendError);
+        }
       }
+
+      Alert.alert(t('success'), t('languageUpdated'));
     } catch (error) {
-      console.error(
-        "Language update failed:",
-        error?.response?.data || error.message
-      );
-      Alert.alert("❌ Failed", "Unable to update language. Try again.");
+      console.error("Language update failed:", error?.response?.data || error.message);
+      Alert.alert(t('error'), "Unable to update language. Try again.");
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ const Language = () => {
         <View style={styles.backButton}>
           <Ionicons name="chevron-back" size={24} color="white" />
         </View>
-        <Text style={styles.headerTitle}>Language</Text>
+        <Text style={styles.headerTitle}>{t('language')}</Text>
       </Pressable>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>

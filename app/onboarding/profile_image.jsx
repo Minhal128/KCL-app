@@ -87,9 +87,10 @@ const ProfileImage = () => {
         });
       } else if (selectedAvatarId) {
         const selected = avatarOptions.find((a) => a.id === selectedAvatarId);
-        formData.append("file", {
-          uri: Image.resolveAssetSource(selected.source).uri,
-          name: selected.fileName,
+        const avatarUri = Image.resolveAssetSource(selected.source).uri;
+        formData.append("avatar", {
+          uri: avatarUri,
+          name: `avatar_${selectedAvatarId}.png`,
           type: "image/png",
         });
       }

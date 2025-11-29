@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Platform, Linking, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Platform, Linking, Text, Alert } from 'react-native';
 import { Video } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useNavigation } from '@react-navigation/native';
@@ -28,11 +28,18 @@ const Play = () => {
     setIsLoading(false);
     if (videoRef.current) {
       try {
-        await videoRef.current.playAsync(); // start playback
+        await videoRef.current.playAsync();
       } catch (error) {
         console.log('Error playing video:', error);
+        Alert.alert('Playback Error', 'Unable to play video. Please try again.');
       }
     }
+  };
+
+  const handleVideoError = (error) => {
+    console.error('Video error:', error);
+    setIsLoading(false);
+    Alert.alert('Video Error', 'Failed to load video. Please check your connection.');
   };
 
   // If direct video URL is available, play in app
@@ -53,6 +60,7 @@ const Play = () => {
           resizeMode="contain"
           onLoadStart={() => setIsLoading(true)}
           onLoad={handleVideoLoad}
+          onError={handleVideoError}
         />
 
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -118,7 +126,8 @@ const Play = () => {
         useNativeControls
         resizeMode="contain"
         onLoadStart={() => setIsLoading(true)}
-        onLoad={handleVideoLoad} // ✅ triggers when metadata is loaded
+        onLoad={handleVideoLoad}
+        onError={handleVideoError}
       />
 
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
