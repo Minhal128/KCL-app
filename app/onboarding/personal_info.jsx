@@ -4,7 +4,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -17,6 +16,8 @@ import CountryPicker from "react-native-country-picker-modal";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authAPI } from "../../services/api";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const PersonalInfo = () => {
   const [country, setCountry] = useState(null);
@@ -29,6 +30,9 @@ const PersonalInfo = () => {
 
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { email, token } = useLocalSearchParams();
 
@@ -47,10 +51,21 @@ const PersonalInfo = () => {
   };
 
   const handleContinue = async () => {
-    if (!name.trim()) return Alert.alert("Error", "Please enter your name.");
-    if (!country) return Alert.alert("Error", "Please select your country.");
-    if (!formattedDate)
-      return Alert.alert("Error", "Please select your date of birth.");
+    if (!name.trim()) {
+      setErrorMessage("Please enter your name.");
+      setShowErrorModal(true);
+      return;
+    }
+    if (!country) {
+      setErrorMessage("Please select your country.");
+      setShowErrorModal(true);
+      return;
+    }
+    if (!formattedDate) {
+      setErrorMessage("Please select your date of birth.");
+      setShowErrorModal(true);
+      return;
+    }
 
     setLoading(true);
     console.log(email, token, name, country.name, new Date(formattedDate));
@@ -59,6 +74,7 @@ const PersonalInfo = () => {
         email,
         token,
         name,
+        username: "",
         country: country.name,
         dateOfBirth: date,
       });
@@ -69,15 +85,12 @@ const PersonalInfo = () => {
         if (accessToken) {
           await AsyncStorage.setItem("access_token", accessToken);
         }
-        Alert.alert("Success", "Profile created successfully!");
-        router.push("onboarding/password");
+        setShowSuccessModal(true);
       }
     } catch (err) {
       console.log("Onboarding Error:", err?.response?.data || err.message);
-      Alert.alert(
-        "Error",
-        err?.response?.data?.message || "Something went wrong. Try again."
-      );
+      setErrorMessage(err?.response?.data?.message || "Something went wrong. Try again.");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -178,6 +191,25 @@ const PersonalInfo = () => {
             )}
           </LinearGradient>
         </TouchableOpacity>
+
+        <SuccessModal
+          visible={showSuccessModal}
+          title="Success"
+          message="Profile created successfully!"
+          buttonText="OK"
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.push("onboarding/password");
+          }}
+        />
+
+        <ErrorModal
+          visible={showErrorModal}
+          title="Error"
+          message={errorMessage}
+          buttonText="OK"
+          onClose={() => setShowErrorModal(false)}
+        />
       </View>
     </KeyboardAwareScrollView>
   );

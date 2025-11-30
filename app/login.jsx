@@ -2,7 +2,6 @@ import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import {
-  Alert,
   Image,
   ImageBackground,
   StyleSheet,
@@ -24,18 +23,22 @@ import { authAPI } from "../services/api";
 import ClerkGoogleSignInButton from "../components/auth/ClerkGoogleSignInButton";
 import ClerkAppleSignInButton from "../components/auth/ClerkAppleSignInButton";
 import ClerkFacebookSignInButton from "../components/auth/ClerkFacebookSignInButton";
+import ErrorModal from "../components/ErrorModal";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { login } = useUser();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password");
+      setErrorMessage("Please enter both email and password");
+      setShowErrorModal(true);
       return;
     }
 
@@ -56,9 +59,10 @@ const Login = () => {
         router.push("home");
       }
     } catch (error) {
-      const errorMessage =
+      const errMsg =
         error.response?.data?.message || "Login failed. Please try again.";
-      Alert.alert("Login Error", errorMessage);
+      setErrorMessage(errMsg);
+      setShowErrorModal(true);
     } finally {
       setIsLoading(false);
     }
@@ -193,6 +197,14 @@ const Login = () => {
             <Text style={styles.signUpLink}>Sign up</Text>
           </TouchableOpacity>
         </View>
+
+        <ErrorModal
+          visible={showErrorModal}
+          title="Login Error"
+          message={errorMessage}
+          buttonText="OK"
+          onClose={() => setShowErrorModal(false)}
+        />
       </View>
     </KeyboardAwareScrollView>
   );

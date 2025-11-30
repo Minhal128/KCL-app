@@ -2,7 +2,6 @@ import { FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import PasswordSuccessModal from "../../components/PasswordSuccessModal";
 import { router, useLocalSearchParams } from "expo-router";
 import { authAPI } from "../../services/api";
+import ErrorModal from "../../components/ErrorModal";
 
 const SetNewPassword = () => {
   const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
@@ -22,17 +22,21 @@ const SetNewPassword = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { token } = useLocalSearchParams();
 
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert("Error", "Please fill all fields.");
+      setErrorMessage("Please fill all fields.");
+      setShowErrorModal(true);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match.");
+      setErrorMessage("Passwords do not match.");
+      setShowErrorModal(true);
       return;
     }
 
@@ -50,14 +54,13 @@ const SetNewPassword = () => {
         //   router.push("/login");
         // }, 2000);
       } else {
-        Alert.alert("Error", response.data.message || "Something went wrong");
+        setErrorMessage(response.data.message || "Something went wrong");
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error(error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to reset password"
-      );
+      setErrorMessage(error.response?.data?.message || "Failed to reset password");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -149,6 +152,13 @@ const SetNewPassword = () => {
           hide={() => setShowSucessModal(false)}
         />
       )}
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </KeyboardAwareScrollView>
   );
 };

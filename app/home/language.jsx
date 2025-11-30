@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -14,6 +13,8 @@ import axios from "axios";
 import { BACKEND_URI } from "../../constants/config";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "../../context/LanguageContext";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const LANGUAGES = [
   { label: "English", value: "en" },
@@ -39,6 +40,8 @@ const Language = () => {
   const { language: currentLanguage, changeLanguage, t } = useLanguage();
   const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   useEffect(() => {
     setSelectedLanguage(currentLanguage);
@@ -75,10 +78,10 @@ const Language = () => {
         }
       }
 
-      Alert.alert(t('success'), t('languageUpdated'));
+      setShowSuccessModal(true);
     } catch (error) {
       console.error("Language update failed:", error?.response?.data || error.message);
-      Alert.alert(t('error'), "Unable to update language. Try again.");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -104,6 +107,22 @@ const Language = () => {
           />
         ))}
       </ScrollView>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title={t('success')}
+        message={t('languageUpdated')}
+        buttonText="OK"
+        onClose={() => setShowSuccessModal(false)}
+      />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title={t('error')}
+        message="Unable to update language. Try again."
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };

@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,8 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { userAPI } from "../../services/api";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const Password = () => {
   // State to toggle password visibility for the first input
@@ -24,34 +25,40 @@ const Password = () => {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleContinue = async () => {
-    if (!password || !confirm)
-      return Alert.alert("Error", "Please enter and confirm your password.");
+    if (!password || !confirm) {
+      setErrorMessage("Please enter and confirm your password.");
+      setShowErrorModal(true);
+      return;
+    }
 
-    if (password.length < 8)
-      return Alert.alert(
-        "Error",
-        "Password must be at least 8 characters long."
-      );
+    if (password.length < 8) {
+      setErrorMessage("Password must be at least 8 characters long.");
+      setShowErrorModal(true);
+      return;
+    }
 
-    if (password !== confirm)
-      return Alert.alert("Error", "Passwords do not match.");
+    if (password !== confirm) {
+      setErrorMessage("Passwords do not match.");
+      setShowErrorModal(true);
+      return;
+    }
 
     try {
       setLoading(true);
       const res = await userAPI.setPassword({ password });
 
       if (res.data.success) {
-        Alert.alert("Success", "Password set successfully!");
-        router.push("/onboarding/profile_image");
+        setShowSuccessModal(true);
       }
     } catch (err) {
       console.log("Password API Error:", err?.response?.data || err.message);
-      Alert.alert(
-        "Error",
-        err?.response?.data?.message || "Something went wrong. Try again."
-      );
+      setErrorMessage(err?.response?.data?.message || "Something went wrong. Try again.");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -148,6 +155,25 @@ const Password = () => {
             )}
           </LinearGradient>
         </TouchableOpacity>
+
+        <SuccessModal
+          visible={showSuccessModal}
+          title="Success"
+          message="Password set successfully!"
+          buttonText="OK"
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.push("/onboarding/profile_image");
+          }}
+        />
+
+        <ErrorModal
+          visible={showErrorModal}
+          title="Error"
+          message={errorMessage}
+          buttonText="OK"
+          onClose={() => setShowErrorModal(false)}
+        />
       </View>
     </KeyboardAwareScrollView>
   );

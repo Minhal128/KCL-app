@@ -7,7 +7,6 @@ import {
   Image,
   TextInput,
   ScrollView,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +17,8 @@ import { userAPI } from "../../services/api";
 import { useUser } from "../../context/UserContext";
 import { useLanguage } from "../../context/LanguageContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const EditProfile = () => {
   const { user, setUser } = useUser();
@@ -31,14 +32,15 @@ const EditProfile = () => {
   const [avatarUri, setAvatarUri] = useState(user?.avatar || null);
 
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert(
-        "Permission required",
-        "Please allow photo access to upload avatar."
-      );
+      setErrorMessage("Please allow photo access to upload avatar.");
+      setShowErrorModal(true);
       return;
     }
 
@@ -79,8 +81,7 @@ const EditProfile = () => {
         setUser(updatedUser);
         await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
         
-        Alert.alert("Success", "Profile updated successfully!");
-        router.back();
+        setShowSuccessModal(true);
       } else {
         // For email/password auth, update via backend
         const formData = new FormData();
@@ -119,15 +120,16 @@ const EditProfile = () => {
           await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
           console.log("✅ Profile updated:", updatedUser);
 
-          Alert.alert(t('success'), t('profileUpdated'));
-          router.back();
+          setShowSuccessModal(true);
         } else {
-          Alert.alert("Error", res.data?.message || "Failed to update profile");
+          setErrorMessage(res.data?.message || "Failed to update profile");
+          setShowErrorModal(true);
         }
       }
     } catch (error) {
       console.error("Update Error:", error);
-      Alert.alert("Error", "Something went wrong while updating your profile");
+      setErrorMessage("Something went wrong while updating your profile");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -217,6 +219,25 @@ const EditProfile = () => {
             )}
           </LinearGradient>
         </TouchableOpacity>
+
+        <SuccessModal
+          visible={showSuccessModal}
+          title="Success"
+          message="Profile updated successfully!"
+          buttonText="OK"
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.back();
+          }}
+        />
+
+        <ErrorModal
+          visible={showErrorModal}
+          title="Error"
+          message={errorMessage}
+          buttonText="OK"
+          onClose={() => setShowErrorModal(false)}
+        />
       </ScrollView>
     </View>
   );
