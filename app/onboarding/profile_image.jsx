@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { Asset } from "expo-asset";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import {
@@ -73,6 +74,7 @@ const ProfileImage = () => {
       const formData = new FormData();
 
       if (selectedImage) {
+        // User uploaded an image from gallery
         const fileName = selectedImage.split("/").pop();
         const type = fileName.endsWith(".png")
           ? "image/png"
@@ -86,10 +88,22 @@ const ProfileImage = () => {
           type,
         });
       } else if (selectedAvatarId) {
+        // User selected a predefined avatar
         const selected = avatarOptions.find((a) => a.id === selectedAvatarId);
-        const avatarUri = Image.resolveAssetSource(selected.source).uri;
+        
+        // Load the asset properly using expo-asset
+        const asset = Asset.fromModule(selected.source);
+        await asset.downloadAsync();
+        
+        // Get the local URI of the downloaded asset
+        const localUri = asset.localUri;
+        
+        if (!localUri) {
+          throw new Error("Failed to load avatar asset");
+        }
+
         formData.append("avatar", {
-          uri: avatarUri,
+          uri: localUri,
           name: `avatar_${selectedAvatarId}.png`,
           type: "image/png",
         });
