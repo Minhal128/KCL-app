@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +11,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { authAPI } from "../../services/api";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const OTP_LENGTH = 6;
 
@@ -19,6 +20,11 @@ const OtpVerification = () => {
   const [otp, setOtp] = useState(new Array(OTP_LENGTH).fill(""));
   const inputRefs = useRef([]);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [verificationToken, setVerificationToken] = useState("");
+  const [showResendSuccessModal, setShowResendSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const { email } = useLocalSearchParams();
 
@@ -62,7 +68,8 @@ const OtpVerification = () => {
   const handleVerifyOtp = async () => {
     const otpCode = otp.join("");
     if (otpCode.length < OTP_LENGTH) {
-      Alert.alert("Error", "Please enter complete OTP");
+      setErrorMessage("Please enter complete OTP");
+      setShowErrorModal(true);
       return;
     }
 
@@ -74,16 +81,13 @@ const OtpVerification = () => {
         otp: otpCode,
       });
 
-      Alert.alert("Success", data.message || "Email verified successfully");
-      router.push(
-        `onboarding/personal_info?email=${encodeURIComponent(
-          email
-        )}&token=${encodeURIComponent(data.token)}`
-      );
+      setVerificationToken(data.token);
+      setShowSuccessModal(true);
     } catch (err) {
       const msg =
         err.response?.data?.message || err.message || "Verification failed";
-      Alert.alert("Failed", msg);
+      setErrorMessage(msg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -96,14 +100,16 @@ const OtpVerification = () => {
       const res = await authAPI.sendOTP(email);
 
       if (res.data?.success) {
-        Alert.alert("Success", "OTP sent successfully! Check your email.");
+        setShowResendSuccessModal(true);
       } else {
-        Alert.alert("Error", res.data?.message || "Failed to send OTP");
+        setErrorMessage(res.data?.message || "Failed to send OTP");
+        setShowErrorModal(true);
       }
     } catch (err) {
       console.error("❌ Resend OTP Error:", err?.response?.data || err.message);
-      const errorMessage = err?.response?.data?.message || err.message || "Something went wrong while sending OTP.";
-      Alert.alert("Error", errorMessage);
+      const errMsg = err?.response?.data?.message || err.message || "Something went wrong while sending OTP.";
+      setErrorMessage(errMsg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -149,6 +155,37 @@ const OtpVerification = () => {
           <Text style={styles.resendLink}>Resend</Text>
         </TouchableOpacity>
       </View>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Success"
+        message="OTP verified successfully"
+        buttonText="OK"
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.push(
+            `onboarding/personal_info?email=${encodeURIComponent(
+              email
+            )}&token=${encodeURIComponent(verificationToken)}`
+          );
+        }}
+      />
+
+      <SuccessModal
+        visible={showResendSuccessModal}
+        title="Success"
+        message="OTP sent successfully! Check your email."
+        buttonText="OK"
+        onClose={() => setShowResendSuccessModal(false)}
+      />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };

@@ -2,11 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import subscription_bg from '../../assets/images/auth/subscription_bg.png';
 import { paymentAPI } from '../../services/api';
 import { useStripe } from '@stripe/stripe-react-native';
 import { useLanguage } from '../../context/LanguageContext';
+import SuccessModal from '../../components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
 
 const PLAN_DETAILS = {
     basic: {
@@ -50,6 +52,9 @@ const Subscription = () => {
     const [processing, setProcessing] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
     const currentPlan = PLAN_DETAILS[selectedPlan];
     const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
@@ -82,7 +87,8 @@ const Subscription = () => {
 
                 if (initError) {
                     console.error('Init error:', initError);
-                    Alert.alert('Error', initError.message || 'Failed to initialize payment');
+                    setErrorMessage(initError.message || 'Failed to initialize payment');
+                    setShowErrorModal(true);
                     setProcessing(false);
                     return;
                 }
@@ -93,30 +99,24 @@ const Subscription = () => {
                 if (presentError) {
                     console.error('Present error:', presentError);
                     if (presentError.code !== 'Canceled') {
-                        Alert.alert('Payment Error', presentError.message || 'Payment failed');
+                        setErrorMessage(presentError.message || 'Payment failed');
+                        setShowErrorModal(true);
                     }
                     setProcessing(false);
                     return;
                 }
 
                 // Payment successful
-                Alert.alert(
-                    'Success! 🎉',
-                    `Your ${currentPlan.name} subscription is now active!`,
-                    [
-                        {
-                            text: 'Go to Profile',
-                            onPress: () => router.replace('/home/profile'),
-                        },
-                    ]
-                );
+                setShowSuccessModal(true);
             } else {
-                Alert.alert('Error', response.data.message || 'Failed to create payment intent');
+                setErrorMessage(response.data.message || 'Failed to create payment intent');
+                setShowErrorModal(true);
             }
         } catch (error) {
             console.error('Payment error:', error);
-            const errorMessage = error.response?.data?.message || error.message || 'Failed to process payment';
-            Alert.alert('Payment Error', errorMessage);
+            const errMsg = error.response?.data?.message || error.message || 'Failed to process payment';
+            setErrorMessage(errMsg);
+            setShowErrorModal(true);
         } finally {
             setProcessing(false);
         }
@@ -245,6 +245,25 @@ const Subscription = () => {
                     </View>
                 </View>
             </Modal>
+
+            <SuccessModal
+                visible={showSuccessModal}
+                title="Success! 🎉"
+                message={`Your ${currentPlan.name} subscription is now active!`}
+                buttonText="Go to Profile"
+                onClose={() => {
+                    setShowSuccessModal(false);
+                    router.replace('/home/profile');
+                }}
+            />
+
+            <ErrorModal
+                visible={showErrorModal}
+                title="Payment Error"
+                message={errorMessage}
+                buttonText="OK"
+                onClose={() => setShowErrorModal(false)}
+            />
         </ImageBackground>
     );
 };

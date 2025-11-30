@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -12,14 +11,20 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { authAPI } from "../../services/api";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const ResetEmail = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address");
+      setErrorMessage("Please enter your email address");
+      setShowErrorModal(true);
       return;
     }
 
@@ -31,19 +36,13 @@ const ResetEmail = () => {
       setLoading(false);
 
       // ✅ On success
-      Alert.alert("Success", res.data?.message || "Reset link sent!");
-      router.push({
-        pathname: "/forgot/otp",
-        params: { email },
-      });
+      setShowSuccessModal(true);
     } catch (err) {
       setLoading(false);
 
       console.log(err.response?.data || err.message);
-      Alert.alert(
-        "Error",
-        err.response?.data?.message || "Failed to send reset email"
-      );
+      setErrorMessage(err.response?.data?.message || "Failed to send reset email");
+      setShowErrorModal(true);
     }
   };
 
@@ -96,6 +95,28 @@ const ResetEmail = () => {
             <Text style={styles.buttonText}>Continue</Text>
           </LinearGradient>
         </TouchableOpacity>
+
+        <SuccessModal
+          visible={showSuccessModal}
+          title="Success"
+          message="Reset link sent to your email!"
+          buttonText="OK"
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.push({
+              pathname: "/forgot/otp",
+              params: { email },
+            });
+          }}
+        />
+
+        <ErrorModal
+          visible={showErrorModal}
+          title="Error"
+          message={errorMessage}
+          buttonText="OK"
+          onClose={() => setShowErrorModal(false)}
+        />
       </View>
     </KeyboardAwareScrollView>
   );

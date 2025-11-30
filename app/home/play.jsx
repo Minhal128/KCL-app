@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Platform, Linking, Text, Alert } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Platform, Linking, Text } from 'react-native';
 import { Video } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
+import ErrorModal from '../../components/ErrorModal';
 
 const Play = () => {
   const { id, vimeoId, url, directUrl } = useLocalSearchParams();
   const [isLoading, setIsLoading] = useState(true);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const videoRef = useRef(null);
   const navigation = useNavigation();
 
@@ -31,7 +34,8 @@ const Play = () => {
         await videoRef.current.playAsync();
       } catch (error) {
         console.log('Error playing video:', error);
-        Alert.alert('Playback Error', 'Unable to play video. Please try again.');
+        setErrorMessage('Unable to play video. Please try again.');
+        setShowErrorModal(true);
       }
     }
   };
@@ -39,7 +43,8 @@ const Play = () => {
   const handleVideoError = (error) => {
     console.error('Video error:', error);
     setIsLoading(false);
-    Alert.alert('Video Error', 'Failed to load video. Please check your connection.');
+    setErrorMessage('Failed to load video. Please check your connection.');
+    setShowErrorModal(true);
   };
 
   // If direct video URL is available, play in app
@@ -133,6 +138,14 @@ const Play = () => {
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <Ionicons name="arrow-back" size={28} color="#fff" />
       </TouchableOpacity>
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Video Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };
