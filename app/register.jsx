@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import {
-  Alert,
   Image,
   ImageBackground,
   StyleSheet,
@@ -24,21 +23,28 @@ import ClerkAppleSignInButton from "../components/auth/ClerkAppleSignInButton";
 import ClerkFacebookSignInButton from "../components/auth/ClerkFacebookSignInButton";
 import { BACKEND_URI } from "../constants/config";
 import axios from "axios";
+import SuccessModal from "../components/SuccessModal";
+import ErrorModal from "../components/ErrorModal";
 
 const Register = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSendOtp = async () => {
     if (!email.trim()) {
-      Alert.alert("Error", "Please enter your email address.");
+      setErrorMessage("Please enter your email address.");
+      setShowErrorModal(true);
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert("Error", "Please enter a valid email address.");
+      setErrorMessage("Please enter a valid email address.");
+      setShowErrorModal(true);
       return;
     }
 
@@ -63,10 +69,10 @@ const Register = () => {
 
       console.log("✅ OTP Response:", res.data);
       if (res.data?.success) {
-        Alert.alert("Success", "OTP sent successfully! Check your email.");
-        router.push(`/onboarding?email=${encodeURIComponent(email.trim())}`);
+        setShowSuccessModal(true);
       } else {
-        Alert.alert("Error", res.data?.message || "Failed to send OTP");
+        setErrorMessage(res.data?.message || "Failed to send OTP");
+        setShowErrorModal(true);
       }
     } catch (err) {
       console.error("❌ OTP Error Full:", err);
@@ -74,15 +80,16 @@ const Register = () => {
       console.error("❌ OTP Error Data:", err?.response?.data);
       console.error("❌ OTP Error Message:", err.message);
       
-      let errorMessage = "Network error. Please check your connection.";
+      let errMsg = "Network error. Please check your connection.";
       
       if (err?.response?.data?.message) {
-        errorMessage = err.response.data.message;
+        errMsg = err.response.data.message;
       } else if (err.message) {
-        errorMessage = err.message;
+        errMsg = err.message;
       }
       
-      Alert.alert("Error", errorMessage);
+      setErrorMessage(errMsg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -169,6 +176,25 @@ const Register = () => {
             <Text style={styles.signUpLink}>Sign in</Text>
           </TouchableOpacity>
         </View>
+
+        <SuccessModal
+          visible={showSuccessModal}
+          title="Success"
+          message="OTP sent successfully! Check your email."
+          buttonText="OK"
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.push(`/onboarding?email=${encodeURIComponent(email.trim())}`);
+          }}
+        />
+
+        <ErrorModal
+          visible={showErrorModal}
+          title="Error"
+          message={errorMessage}
+          buttonText="OK"
+          onClose={() => setShowErrorModal(false)}
+        />
       </View>
     </KeyboardAwareScrollView>
   );

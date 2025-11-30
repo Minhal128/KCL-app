@@ -4,7 +4,6 @@ import { Asset } from "expo-asset";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import {
-  Alert,
   Image,
   StyleSheet,
   Text,
@@ -14,6 +13,8 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { userAPI } from "../../services/api";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 import avatar_1 from "../../assets/images/avatar/1.png";
 import avatar_2 from "../../assets/images/avatar/2.png";
@@ -33,6 +34,9 @@ const ProfileImage = () => {
   const [selectedAvatarId, setSelectedAvatarId] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleImageUpload = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -65,7 +69,8 @@ const ProfileImage = () => {
 
   const handleContinue = async () => {
     if (!selectedImage && !selectedAvatarId) {
-      Alert.alert("Error", "Please select or upload an image first.");
+      setErrorMessage("Please select or upload an image first.");
+      setShowErrorModal(true);
       return;
     }
 
@@ -112,15 +117,12 @@ const ProfileImage = () => {
       const response = await userAPI.updateAvatar(formData);
 
       if (response.data.success) {
-        Alert.alert("Success", "Profile image updated successfully!");
-        router.push("/onboarding/interest");
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error(error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || error.message || "Something went wrong"
-      );
+      setErrorMessage(error.response?.data?.message || error.message || "Something went wrong");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -186,6 +188,25 @@ const ProfileImage = () => {
       <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
         <Text style={styles.skipText}>Skip for now</Text>
       </TouchableOpacity>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Success"
+        message="Profile image updated successfully!"
+        buttonText="OK"
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.push("/onboarding/interest");
+        }}
+      />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };

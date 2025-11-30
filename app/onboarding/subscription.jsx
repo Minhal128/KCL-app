@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   ImageBackground,
   ScrollView,
   StyleSheet,
@@ -16,6 +15,7 @@ import { useStripe } from "@stripe/stripe-react-native";
 import axios from "axios";
 import { BACKEND_URI } from "../../constants/config";
 import { useLanguage } from "../../context/LanguageContext";
+import SuccessModal from "../../components/SuccessModal";
 
 const PLAN_DETAILS = {
   "Basic Plan": {
@@ -52,6 +52,7 @@ const Subscription = () => {
   const [selectedPlan, setSelectedPlan] = useState("Standard");
   const currentPlan = PLAN_DETAILS[selectedPlan];
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const stripe = useStripe();
 
   const initializeGooglePay = async () => {
@@ -70,8 +71,7 @@ const Subscription = () => {
 
   // 🔹 Handle payment - temporarily disabled, just skip to home
   const handlePayment = () => {
-    Alert.alert(t('success'), "Subscription setup skipped for testing!");
-    router.push("/home");
+    setShowSuccessModal(true);
   };
 
   const renderPlanTab = (planName) => {
@@ -176,6 +176,17 @@ const Subscription = () => {
             <Text style={styles.skipText}>{t('skip')}</Text>
           </TouchableOpacity>
         </View>
+
+        <SuccessModal
+          visible={showSuccessModal}
+          title={t('success')}
+          message="Subscription setup skipped for testing!"
+          buttonText="OK"
+          onClose={() => {
+            setShowSuccessModal(false);
+            router.push("/home");
+          }}
+        />
       </ScrollView>
     </ImageBackground>
   );

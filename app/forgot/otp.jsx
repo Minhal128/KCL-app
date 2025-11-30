@@ -3,7 +3,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { authAPI } from "../../services/api";
+import SuccessModal from "../../components/SuccessModal";
+import ErrorModal from "../../components/ErrorModal";
 
 const OTP_LENGTH = 6;
 
@@ -19,6 +20,10 @@ const ResetOtpVerification = () => {
   const inputRefs = useRef([]);
   const { email } = useLocalSearchParams();
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [resetToken, setResetToken] = useState("");
 
   const handleOtpChange = (text, index) => {
     if (isNaN(text)) return;
@@ -54,7 +59,8 @@ const ResetOtpVerification = () => {
     const enteredOtp = otp.join("");
 
     if (enteredOtp.length !== OTP_LENGTH) {
-      Alert.alert("Error", "Please enter the full 6-digit OTP code.");
+      setErrorMessage("Please enter the full 6-digit OTP code.");
+      setShowErrorModal(true);
       return;
     }
 
@@ -67,19 +73,13 @@ const ResetOtpVerification = () => {
 
       setLoading(false);
 
-      Alert.alert("Success", res.data?.message || "OTP verified!");
-
-      router.push({
-        pathname: "/forgot/password",
-        params: { token: res.data.token },
-      });
+      setResetToken(res.data.token);
+      setShowSuccessModal(true);
     } catch (err) {
       setLoading(false);
       console.log(err.response?.data || err.message);
-      Alert.alert(
-        "Error",
-        err.response?.data?.message || "Invalid or expired OTP"
-      );
+      setErrorMessage(err.response?.data?.message || "Invalid or expired OTP");
+      setShowErrorModal(true);
     }
   };
 
@@ -122,6 +122,28 @@ const ResetOtpVerification = () => {
           <Text style={styles.resendLink}>Resend</Text>
         </TouchableOpacity>
       </View>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Success"
+        message="OTP verified successfully!"
+        buttonText="OK"
+        onClose={() => {
+          setShowSuccessModal(false);
+          router.push({
+            pathname: "/forgot/password",
+            params: { token: resetToken },
+          });
+        }}
+      />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };

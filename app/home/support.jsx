@@ -7,12 +7,13 @@ import {
   ScrollView,
   TextInput,
   ActivityIndicator,
-  Alert,
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { supportAPI } from '../../services/api';
+import SuccessModal from '../../components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
 
 const TicketItem = ({ ticket, onPress }) => {
   const getStatusColor = (status) => {
@@ -88,6 +89,9 @@ const SupportScreen = () => {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('other');
   const [priority, setPriority] = useState('medium');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const categories = [
     { value: 'technical', label: 'Technical Issue' },
@@ -126,7 +130,8 @@ const SupportScreen = () => {
         console.log('📡 Support tickets not available (Clerk auth)');
       } else {
         console.error('Error fetching tickets:', error);
-        Alert.alert('Error', 'Failed to load tickets');
+        setErrorMessage('Failed to load tickets');
+        setShowErrorModal(true);
       }
     } finally {
       setLoading(false);
@@ -139,7 +144,8 @@ const SupportScreen = () => {
 
   const handleCreateTicket = async () => {
     if (!subject.trim() || !description.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      setErrorMessage('Please fill in all required fields');
+      setShowErrorModal(true);
       return;
     }
 
@@ -153,7 +159,7 @@ const SupportScreen = () => {
       });
 
       if (response.data.success) {
-        Alert.alert('Success', 'Support ticket created successfully');
+        setShowSuccessModal(true);
         setShowCreateModal(false);
         setSubject('');
         setDescription('');
@@ -161,12 +167,14 @@ const SupportScreen = () => {
         setPriority('medium');
         fetchTickets();
       } else {
-        Alert.alert('Error', response.data.message || 'Failed to create ticket');
+        setErrorMessage(response.data.message || 'Failed to create ticket');
+        setShowErrorModal(true);
       }
     } catch (error) {
       console.error('Error creating ticket:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create ticket';
-      Alert.alert('Error', errorMessage);
+      const errMsg = error.response?.data?.message || error.message || 'Failed to create ticket';
+      setErrorMessage(errMsg);
+      setShowErrorModal(true);
     } finally {
       setCreating(false);
     }
@@ -349,6 +357,29 @@ const SupportScreen = () => {
           </View>
         </View>
       </Modal>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Success"
+        message="Support ticket created successfully!"
+        buttonText="OK"
+        onClose={() => {
+          setShowSuccessModal(false);
+          setSubject('');
+          setDescription('');
+          setCategory('other');
+          setPriority('medium');
+          fetchTickets();
+        }}
+      />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };

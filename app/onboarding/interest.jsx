@@ -2,8 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { userAPI } from "../../services/api";
+import ErrorModal from "../../components/ErrorModal";
 
 const INTEREST_OPTIONS = [
   "action",
@@ -23,6 +24,8 @@ const INTEREST_OPTIONS = [
 const Interest = () => {
   const [selectedInterests, setSelectedInterests] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const toggleInterest = (interest) => {
     setSelectedInterests((prev) =>
@@ -57,7 +60,8 @@ const Interest = () => {
 
   const handleContinue = async () => {
     if (selectedInterests.length === 0) {
-      Alert.alert("Error", "Please select at least one interest.");
+      setErrorMessage("Please select at least one interest.");
+      setShowErrorModal(true);
       return;
     }
 
@@ -74,10 +78,8 @@ const Interest = () => {
       }
     } catch (error) {
       console.error("❌ Error adding interests:", error);
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to save interests"
-      );
+      setErrorMessage(error.response?.data?.message || "Failed to save interests");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -113,6 +115,14 @@ const Interest = () => {
           <Text style={styles.buttonText}>Continue</Text>
         </LinearGradient>
       </TouchableOpacity>
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={errorMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </View>
   );
 };

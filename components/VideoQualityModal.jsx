@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  Alert,
   Dimensions,
   Modal,
   StyleSheet,
@@ -11,6 +10,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { profileAPI } from "../services/api";
+import SuccessModal from "./SuccessModal";
+import ErrorModal from "./ErrorModal";
 
 const { height } = Dimensions.get("window");
 
@@ -35,6 +36,9 @@ const QualityOption = ({ label, isSelected, onPress }) => (
 const VideoQualityModal = ({ visible, onCancel }) => {
   const [selectedQuality, setSelectedQuality] = useState("low");
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
 
   useEffect(() => {
     const loadQuality = async () => {
@@ -63,11 +67,8 @@ const VideoQualityModal = ({ visible, onCancel }) => {
         // For Clerk auth, store locally only
         console.log("✅ Using Clerk auth, storing video quality locally");
         await AsyncStorage.setItem("userVideoQuality", value);
-        Alert.alert(
-          "✅ Updated",
-          `Video quality set to ${value.toUpperCase()}`
-        );
-        onCancel();
+        setModalMessage(`Video quality set to ${value.toUpperCase()}`);
+        setShowSuccessModal(true);
       } else {
         // For email/password auth, update via backend
         const response = await profileAPI.editVideoQuality({ videoQuality: value });
@@ -75,13 +76,11 @@ const VideoQualityModal = ({ visible, onCancel }) => {
         if (response.status === 200) {
           // Store locally too
           await AsyncStorage.setItem("userVideoQuality", value);
-          Alert.alert(
-            "✅ Updated",
-            `Video quality set to ${value.toUpperCase()}`
-          );
-          onCancel();
+          setModalMessage(`Video quality set to ${value.toUpperCase()}`);
+          setShowSuccessModal(true);
         } else {
-          Alert.alert("⚠️ Error", "Could not update video quality");
+          setModalMessage("Could not update video quality");
+          setShowErrorModal(true);
         }
       }
     } catch (error) {
@@ -89,7 +88,8 @@ const VideoQualityModal = ({ visible, onCancel }) => {
         "Video quality update failed:",
         error?.response?.data || error.message
       );
-      Alert.alert("❌ Failed", "Unable to update video quality. Try again.");
+      setModalMessage("Unable to update video quality. Try again.");
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -118,6 +118,25 @@ const VideoQualityModal = ({ visible, onCancel }) => {
           </View>
         </View>
       </View>
+
+      <SuccessModal
+        visible={showSuccessModal}
+        title="Updated"
+        message={modalMessage}
+        buttonText="OK"
+        onClose={() => {
+          setShowSuccessModal(false);
+          onCancel();
+        }}
+      />
+
+      <ErrorModal
+        visible={showErrorModal}
+        title="Error"
+        message={modalMessage}
+        buttonText="OK"
+        onClose={() => setShowErrorModal(false)}
+      />
     </Modal>
   );
 };

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput, FlatList, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, Image, TextInput, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import BottomNavbar from '../../components/BottomNavbar';
 import { watchlistAPI } from '../../services/api';
+import SuccessModal from '../../components/SuccessModal';
+import ErrorModal from '../../components/ErrorModal';
 
 const CATEGORY_TABS = ['All', 'Movies', 'Series', 'Episodes'];
 
@@ -188,6 +190,9 @@ const Explore = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
     const fetchWatchlist = async (isRefresh = false) => {
         try {
@@ -212,7 +217,8 @@ const Explore = () => {
                 setFilteredWatchlist([]);
             } else {
                 console.error('Error fetching watchlist:', error);
-                Alert.alert('Error', `Failed to load watchlist: ${error.response?.status || error.message}`);
+                setErrorMessage(`Failed to load watchlist: ${error.response?.status || error.message}`);
+                setShowErrorModal(true);
             }
         } finally {
             setLoading(false);
@@ -259,10 +265,11 @@ const Explore = () => {
         try {
             await watchlistAPI.removeFromWatchlist(contentId);
             setWatchlist(prev => prev.filter(item => item._id !== contentId));
-            Alert.alert('Success', 'Removed from watchlist');
+            setShowSuccessModal(true);
         } catch (error) {
             console.error('Error removing from watchlist:', error);
-            Alert.alert('Error', 'Failed to remove from watchlist');
+            setErrorMessage('Failed to remove from watchlist');
+            setShowErrorModal(true);
         }
     };
 
@@ -293,6 +300,22 @@ const Explore = () => {
                 />
             </ScrollView>
             <BottomNavbar />
+
+            <SuccessModal
+                visible={showSuccessModal}
+                title="Success"
+                message="Removed from watchlist"
+                buttonText="OK"
+                onClose={() => setShowSuccessModal(false)}
+            />
+
+            <ErrorModal
+                visible={showErrorModal}
+                title="Error"
+                message={errorMessage}
+                buttonText="OK"
+                onClose={() => setShowErrorModal(false)}
+            />
         </View>
     );
 };
